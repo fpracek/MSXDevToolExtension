@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Object Management (Sprites, Tiles, Maps, Fonts, Palettes, Images, Animations)</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    label {
+      font-weight: bold;
+      margin-right: 5px;
+      color: black; /* Change text color to black */
+    }
+    #filters label {
+      color: white; /* Keep filter labels white */
+    }
+    select, input, button {
+      margin: 5px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    thead {
+      background-color: #ddd;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+      color: black; /* Change text color to black */
+    }
+    /* Quadrati colore (per Palettes) */
+    .color-square {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      margin: 2px;
+      border: 1px solid #999;
+      vertical-align: middle;
+      box-sizing: border-box;
+      cursor: pointer;
+      position: relative;
+      text-align: center; /* Center text horizontally */
+    }
+    .color-square span {
+      font-size: 12px;
+      font-weight: bold;
+      display: inline-block;
+      width: 100%; /* Ensure the span takes the full width of the square */
+      text-align: center; /* Center text horizontally */
+    }
+    .checkerboard {
+      background: repeating-linear-gradient(
+        45deg,
+        #ccc 0,
+        #ccc 5px,
+        #fff 5px,
+        #fff 10px
+      );
+      cursor: not-allowed;
+    }
+    .action-button {
+      margin: 2px;
+      padding: 3px 5px;
+      cursor: pointer;
+    }
+    .action-button:hover {
+      background-color: #eee;
+    }
+    .hidden {
+      display: none;
+    }
+    .details-view {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .details-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+    }
+    .main-detail-panel {
+      flex: 1;
+      display: flex;
+    }
+    .drawing-panel {
+      flex: 1;
+      background: #f9f9f9;
+      overflow: auto;
+    }
+    .images-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .splitter {
+      background: #ccc;
+      width: 5px;
+      cursor: col-resize;
+    }
+    .splitter-horizontal {
+      background: #ccc;
+      height: 5px;
+      cursor: row-resize;
+    }
+    .image-grid-panel, .patterns-grid-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .image-grid-title, .patterns-grid-title {
+      font-weight: bold;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+    .color-picker {
+      padding: 10px;
+      border-top: 1px solid #ccc;
+    }
+    .image-grid, .patterns-grid {
+      flex: 1;
+      display: grid;
+      gap: 5px;
+      padding: 10px;
+      overflow: auto;
+    }
+    .image-grid img, .patterns-grid img {
+      border: 2px solid black;
+      cursor: pointer;
+    }
+    .image-grid img.focused, .patterns-grid img.focused {
+      border: 2px solid red;
+      outline: 2px solid black;
+    }
+    .image-grid img:not(.focused), .patterns-grid img:not(.focused) {
+      border: 1px solid white;
+    }
+    .panel {
+      display: none;
+    }
+    .panel.active {
+      display: block;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .dialog {
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #666;
+      border-radius: 4px;
+      min-width: 250px;
+      text-align: center;
+      color: black;
+    }
+    .form-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .form-group label {
+      width: 150px; /* Adjust this width based on the longest label */
+      color: white; /* Set label font color to white */
+      text-align: left; /* Align labels to the left */
+      margin-right: 10px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group div {
+      flex: 1;
+    }
+    .color-picker-dialog {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .color-picker-dialog label,
+    .color-picker-dialog input,
+    .color-picker-dialog button {
+      margin: 0 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="mainPanel" class="panel active">
+  <!-- FILTRI -->
+  <div id="filters">
+    <label for="typeSelect">Type:</label>
+    <select id="typeSelect">
+      <option value="Sprites">Sprites</option>
+      <option value="Tiles">Tiles</option>
+      <option value="Maps">Maps</option>
+      <option value="Fonts">Fonts</option>
+      <option value="Palettes">Palettes</option>
+      <option value="Images">Images</option>
+      <option value="Animations">Animations</option>
+    </select>
+
+    <label for="subtypeSelect" id="subtypeLabel" class="hidden">Subtype:</label>
+    <select id="subtypeSelect" class="hidden"></select>
+  </div>
+
+  <!-- TABELLA DATI -->
+  <table id="dataGrid">
+    <thead>
+      <tr id="gridHeader"></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Pulsante di aggiunta -->
+  <button id="addButton">New</button>
+
+  <!-- Dialog inserimento/modifica -->
+  <div id="editDialog" class="hidden"></div>
+</div>
+
+  <!-- Overlay: colorPicker -->
+  <div id="colorPickerOverlay" class="overlay">
+    <div id="colorPickerDialog" class="dialog color-picker-dialog">
+      <label>Choose color:</label>
+      <input type="color" id="colorPickerInput" />
+      <button id="colorPickerOk">OK</button>
+      <button id="colorPickerCancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Overlay: confirm remove -->
+  <div id="confirmOverlay" class="overlay">
+    <div id="confirmDialog" class="dialog">
+      <p>Are you sure to remove this record?</p>
+      <button id="confirmOk">Yes</button>
+      <button id="confirmCancel">No</button>
+    </div>
+  </div>
+
+  <!-- Overlay: info message -->
+  <div id="infoOverlay" class="overlay">
+    <div id="infoDialog" class="dialog">
+      <p id="infoMessage"></p>
+      <button id="infoOk">OK</button>
+    </div>
+  </div>
+
+<script src="./utils.js"></script>
+<script>
+  function rgbToMsx(hexColor) {
+  // Rimuove il "#" iniziale, se presente
+  const cleanHex = hexColor.replace(/^#/, "");
+
+  // Controlla che la stringa sia lunga 6 caratteri esadecimali
+  if (cleanHex.length !== 6) {
+    throw new Error("Formato colore non valido: deve essere #rrggbb");
+  }
+
+  // Estrae i componenti R, G e B in decimale (0-255)
+  const rDec = parseInt(cleanHex.slice(0, 2), 16);
+  const gDec = parseInt(cleanHex.slice(2, 4), 16);
+  const bDec = parseInt(cleanHex.slice(4, 6), 16);
+
+  // Converte ciascun canale da [0..255] a [0..15].
+  // Usando divisione per 17 e arrotondamento: 255/17 = 15
+  const r4 = Math.round(rDec / 17);
+  const g4 = Math.round(gDec / 17);
+  const b4 = Math.round(bDec / 17);
+
+  // Restituisce la stringa con i nomi dei canali
+  return `R=${r4}, G=${g4}, B=${b4}`;
+}
+/* ======================================================================================
+   STATO GLOBALE
+   ====================================================================================== */
+let editModeActive = false; // se true => nascondiamo i pulsanti in grid
+let dataStore = [];
+let tempPaletteColors = []; // Variabile globale per memorizzare i colori temporanei
+const vscode = acquireVsCodeApi(); // Acquire VS Code API once
+
+/* ======================================================================================
+   MOCK DATI
+   ====================================================================================== */
+
+function loadDataStore(data) {
+  dataStore = JSON.parse(data);
+  updateGrid();
+}
+
+/* ======================================================================================
+   FUNZIONI DI SUPPORTO
+   ====================================================================================== */
+
+function saveDataStore() {
+  console.log("Saving dataStore...");
+
+  
+  vscode.postMessage({
+    command: 'saveDataStore',
+    data: JSON.stringify(dataStore)
+  });
+}
+
+/* ======================================================================================
+   FUNZIONI DI SUPPORTO
+   ====================================================================================== */
+
+function getSubtypesForType(type) {
+  if (type === "Sprites") {
+    return ["Type 1", "Type 2"];
+  }
+  else if (type === "Tiles") {
+    return ["Standard", "Bitmap"];
+  }
+  return [];
+}
+
+function getDependants(type, id) {
+  return dataStore.filter(r => (r.ChildObjectType === type && r.ChildObjectID && r.ChildObjectID.toString() === id.toString()));
+}
+
+function getNextIDForType(type) {
+  let max = 0;
+  dataStore.forEach(r => {
+    if (r.Type === type && r.ID > max) {
+      max = r.ID;
+    }
+  });
+  return max + 1;
+}
+
+function getChildObjectDescription(childType, childID) {
+  if (!childType || !childID) return "";
+  
+  let rec= dataStore.find(r => r.Type === childType && r.ID.toString() === childID.toString());
+  
+  if (!rec) return "";
+  return rec.Description;
+}
+
+/* ======================================================================================
+   GESTIONE SUBTYPE + GRID
+   ====================================================================================== */
+function updateSubtypeCombo() {
+  const type = document.getElementById("typeSelect").value;
+  const subtypeCombo = document.getElementById("subtypeSelect");
+  const subtypeLabel = document.getElementById("subtypeLabel");
+
+  let subtypes = getSubtypesForType(type);
+  if (subtypes.length > 0) {
+    subtypeCombo.classList.remove("hidden");
+    subtypeLabel.classList.remove("hidden");
+    subtypeCombo.innerHTML = "";
+    subtypes.forEach(st => {
+      let opt = document.createElement("option");
+      opt.value = st;
+      opt.textContent = st;
+      subtypeCombo.appendChild(opt);
+    });
+    subtypeCombo.selectedIndex = 0;
+  } else {
+    subtypeCombo.classList.add("hidden");
+    subtypeLabel.classList.add("hidden");
+    subtypeCombo.innerHTML = "";
+  }
+}
+
+function updateGrid() {
+  const type = document.getElementById("typeSelect").value;
+  const subtypeCombo = document.getElementById("subtypeSelect");
+  let subtype = "";
+  if (!subtypeCombo.classList.contains("hidden")) {
+    subtype = subtypeCombo.value;
+  }
+  renderGrid(type, subtype);
+}
+
+/* ======================================================================================
+   RENDER GRIGLIA
+   ====================================================================================== */
+function renderGrid(typeFilter, subtypeFilter) {
+  const tbody = document.querySelector("#dataGrid tbody");
+  const theadRow = document.getElementById("gridHeader");
+  tbody.innerHTML = "";
+  theadRow.innerHTML = "";
+
+  let columns = [];
+  switch (typeFilter) {
+    case "Sprites":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Size (W/H)", field: "Size" },
+        { label: "Palette", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+    case "Tiles":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Size (W/H)", field: "Size" },
+        { label: "Palette", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+    case "Maps":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Size (W/H)", field: "Size" },
+        { label: "Tile", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+    case "Fonts":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Size (W/H)", field: "Size" },
+        { label: "Spaces (W/H)", field: "FontSpaces" },
+        { label: "First char", field: "FirstFontChar" },
+        { label: "Last char", field: "LastFontChar" },
+        { label: "Palette", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+    case "Animations":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Sprite/Tile", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+    case "Palettes":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Colors", field: "Values" }
+      ];
+      break;
+    case "Images":
+      columns = [
+        { label: "ID", field: "ID" },
+        { label: "Description", field: "Description" },
+        { label: "Size (W/H)", field: "Size" },
+        { label: "Palette", field: "ChildObjectID" },
+        { label: "Items", field: "ValuesCount" } // New column
+      ];
+      break;
+  }
+
+  // Creiamo l'header
+  columns.forEach(col => {
+    let th = document.createElement("th");
+    th.textContent = col.label;
+    theadRow.appendChild(th);
+  });
+  let thAction = document.createElement("th");
+  thAction.textContent = "Actions";
+  theadRow.appendChild(thAction);
+
+  // Filtro dataStore
+  let filteredData = dataStore.filter(row => {
+    if (row.Type !== typeFilter) return false;
+    if (getSubtypesForType(typeFilter).length > 0) {
+      return (row.Subtype === subtypeFilter);
+    }
+    return (row.Subtype === "");
+  });
+
+  // Righe
+  filteredData.forEach(row => {
+    let tr = document.createElement("tr");
+
+    columns.forEach(col => {
+      let td = document.createElement("td");
+
+      if (col.field === "ChildObjectID") {
+        // prendi la desc dell'oggetto child
+        let objDesc = getChildObjectDescription(row.ChildObjectType, row.ChildObjectID);
+        // se Animations => aggiungi (S) o (T)
+        if (typeFilter === "Animations") {
+          if (row.ChildObjectType === "Sprites") {
+            objDesc += " (Sprite)";
+          } else if (row.ChildObjectType === "Tiles") {
+            objDesc += " (Tile)";
+          }
+        }
+        td.textContent = objDesc;
+      }
+      else if (col.field === "Values" && typeFilter === "Palettes") {
+        // 16 quadratini
+        try {
+          
+          let valArr =row.Values;
+          valArr.forEach(c => {
+            let colorDiv = document.createElement("span");
+            colorDiv.className = "color-square";
+            let hexID = (c.id + "").toUpperCase();
+            if (hexID === "0") {
+              colorDiv.classList.add("checkerboard");
+              colorDiv.style.cursor = "default";
+            } else {
+              colorDiv.style.backgroundColor = c.color;
+            }
+            colorDiv.title = `RGB: ${c.color}\nMSX: ${rgbToMsx(c.color)}`;
+
+            let labelSpan = document.createElement("span");
+            labelSpan.textContent = hexID;
+            let isDark = computeBrightness(c.color) < 128;
+            labelSpan.style.color = isDark ? "#fff" : "#000";
+            if (hexID === "0") {
+              labelSpan.style.color = "#444";
+            }
+            colorDiv.appendChild(labelSpan);
+            td.appendChild(colorDiv);
+          });
+        } catch(e) {
+          console.log ("ERROR", e);
+          td.textContent = "Invalid JSON Colors";
+        }
+      }
+      else if (col.field === "ValuesCount") {
+        // New column logic
+        td.textContent = row.Values ? row.Values.length : 0;
+      }
+      else if (typeFilter === "Fonts" && col.field === "FontSpaces") {
+        // Se FontSpaces è vuoto => "0x0"
+        if (!row.FontSpaces) {
+          td.textContent = "0x0";
+        } else {
+          td.textContent = row.FontSpaces;
+        }
+      }
+      else {
+        // generico
+        td.textContent = row[col.field] || "";
+      }
+
+      tr.appendChild(td);
+    });
+
+    // Colonna "Actions"
+    let tdActions = document.createElement("td");
+    if (!editModeActive) {
+      // Bottone Edit
+      let editBtn = document.createElement("button");
+      editBtn.className = "action-button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        console.log("Clicked Edit su record:", row);
+        openEditDialog(row, false);
+      });
+      tdActions.appendChild(editBtn);
+
+      // Bottone Remove
+      let removeBtn = document.createElement("button");
+      removeBtn.className = "action-button";
+      removeBtn.textContent = "Remove";
+      let isRef = getDependants(row.Type, row.ID).length > 0;
+      if (isRef) {
+        removeBtn.style.display = "none";
+      }
+      // se Palettes => non rimuovere se c'è solo 1
+      let totalPal = dataStore.filter(r => r.Type === "Palettes").length;
+      if (row.Type === "Palettes" && totalPal <= 1) {
+        removeBtn.style.display = "none";
+      }
+      removeBtn.addEventListener("click", () => {
+        console.log("Clicked Remove su record:", row);
+        openConfirmDialog(() => {
+          dataStore = dataStore.filter(r => !(r.Type === row.Type && r.ID === row.ID));
+          saveDataStore();
+          updateGrid();
+        });
+      });
+      tdActions.appendChild(removeBtn);
+
+      // Bottone Details (tranne Palettes)
+      if (row.Type !== "Palettes") {
+        let detailsBtn = document.createElement("button");
+        detailsBtn.className = "action-button details-button";
+        detailsBtn.textContent = "Collection...";
+        detailsBtn.dataset.recordId = row.ID;
+        tdActions.appendChild(detailsBtn);
+      }
+    }
+    tr.appendChild(tdActions);
+
+    tbody.appendChild(tr);
+  });
+}
+
+/* ======================================================================================
+   OPEN EDIT DIALOG
+   ====================================================================================== */
+function openEditDialog(existingRow, createNew) {
+  console.log("openEditDialog, createNew=", createNew);
+  const dialog = document.getElementById("editDialog");
+  dialog.innerHTML = "";
+  dialog.classList.remove("hidden");
+
+  // Hide "New" button
+  document.getElementById("addButton").classList.add("hidden");
+
+  editModeActive = true;
+  updateGrid();
+
+  // Disabilitiamo Type e Subtype
+  document.getElementById("typeSelect").disabled = true;
+  document.getElementById("subtypeSelect").disabled = true;
+
+  const currentType = document.getElementById("typeSelect").value;
+  let currentSubtype = "";
+  if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+    currentSubtype = document.getElementById("subtypeSelect").value;
+  }
+
+  let tempRow = {};
+  if (createNew) {
+    tempRow.Type = currentType;
+    tempRow.Subtype = getSubtypesForType(currentType).length > 0 ? currentSubtype : "";
+    tempRow.ID = getNextIDForType(currentType);
+    tempRow.Description = "";
+    tempRow.Size = "";
+    tempRow.EditingSettings = "";
+    tempRow.ChildObjectType = "";
+    tempRow.ChildObjectID = null;
+    tempRow.Values = "";
+    tempRow.FirstFontChar = "";
+    tempRow.LastFontChar = "";
+    tempRow.FontSpaces = "";
+
+    // se Palettes => default colors
+    if (currentType === "Palettes") {
+      tempRow.Values = getDefaultMSXColors(false);
+      tempPaletteColors = [...tempRow.Values]; // Assign initial palette
+    }
+    // se Sprites => size=8x8
+    if (currentType === "Sprites") {
+      tempRow.Size = "8x8";
+    }
+    // se Tiles e subtype=Bitmap => size=8x8
+    if (currentType === "Tiles" && currentSubtype === "Bitmap") {
+      tempRow.Size = "8x8";
+    }
+    // se Images => size=100x100
+    if (currentType === "Images") {
+      tempRow.Size = "100x100";
+    }
+    // se Fonts => size=8x8
+    if (currentType === "Fonts") {
+      tempRow.Size = "8x8";
+      tempRow.FontSpaces = "0x0";
+    }
+    if (currentType === "Maps") {
+      tempRow.Size = "10x10";
+    }
+
+    
+  } else {
+    // Copia shallow
+    tempRow = { ...existingRow };
+    if (currentType === "Palettes") {
+      tempPaletteColors = [...tempRow.Values]; // Assign existing palette
+    }
+  }
+
+  let fields = getFieldsForType(currentType, tempRow, createNew);
+  fields.forEach(f => {
+    let divWrap = document.createElement("div");
+    divWrap.className = "form-group";
+    let fieldLabel = document.createElement("label");
+    fieldLabel.textContent = f.label;
+    let fieldInput = null;
+
+    switch (f.type) {
+      case "text":
+        fieldInput = document.createElement("input");
+        fieldInput.type = "text";
+        fieldInput.value = tempRow[f.name] || "";
+        if (f.maxLength) {
+          fieldInput.maxLength = f.maxLength;
+        }
+        fieldInput.disabled = !!f.disabled;
+        fieldInput.addEventListener("input", e => {
+          tempRow[f.name] = e.target.value;
+        });
+        break;
+
+      case "spinpair":
+      case "spinpair-fontspaces":
+        let [w, h] = (tempRow[f.name] || "0x0").split("x");
+        let spinW = document.createElement("input");
+        spinW.type = "number";
+        spinW.min = f.min; spinW.max = f.max; spinW.step = f.step;
+        spinW.value = w || 0;
+        spinW.disabled = !!f.disabled;
+
+        let spinH = document.createElement("input");
+        spinH.type = "number";
+        spinH.min = f.min; spinH.max = f.max; spinH.step = f.step;
+        spinH.value = h || 0;
+        spinH.disabled = !!f.disabled;
+
+        spinW.addEventListener("change", () => {
+          tempRow[f.name] = spinW.value + "x" + spinH.value;
+          
+        });
+        spinH.addEventListener("change", () => {
+        
+          tempRow[f.name] = spinW.value + "x" + spinH.value;
+          
+        });
+
+        fieldInput = document.createElement("span");
+        fieldInput.appendChild(spinW);
+        fieldInput.appendChild(document.createTextNode(" x "));
+        fieldInput.appendChild(spinH);
+        break;
+
+      case "char":
+        fieldInput = document.createElement("input");
+        fieldInput.type = "text";
+        fieldInput.maxLength = 1;
+        fieldInput.value = tempRow[f.name] || "";
+        fieldInput.disabled = !!f.disabled;
+        fieldInput.addEventListener("input", e => {
+          if (e.target.value.length > 1) {
+            e.target.value = e.target.value.slice(0,1);
+          }
+          tempRow[f.name] = e.target.value;
+        });
+        break;
+
+      case "combobox":
+        fieldInput = document.createElement("select");
+        fieldInput.disabled = !!f.disabled;
+        f.options.forEach(opt => {
+          let o = document.createElement("option");
+          o.value = opt.value;
+          o.textContent = opt.label;
+          fieldInput.appendChild(o);
+        });
+        fieldInput.value = tempRow[f.name] || "";
+        fieldInput.addEventListener("change", e => {
+          tempRow[f.name] = e.target.value;
+        });
+        break;
+
+      case "palette-colors-editor":
+        fieldInput = document.createElement("div");
+        renderPaletteEditor(fieldInput, tempRow);
+        break;
+    }
+
+    divWrap.appendChild(fieldLabel);
+    if (fieldInput) divWrap.appendChild(fieldInput);
+    dialog.appendChild(divWrap);
+  });
+
+  // Bottoni Save/Cancel
+  let divActions = document.createElement("div");
+  divActions.className = "form-group";
+  let saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save";
+  saveBtn.addEventListener("click", () => {
+    console.log("Clicked SAVE; createNew=", createNew, "tempRow=", tempRow);
+
+    // Se Animations in modifica => l'utente cambia solo desc
+    if (currentType === "Animations" && !createNew) {
+      tempRow.ChildObjectID = existingRow.ChildObjectID;
+      tempRow.ChildObjectType = existingRow.ChildObjectType;
+    }
+
+    // Validazione minima
+    if (!tempRow.Description) {
+      openInfoDialog("Description is required!", null);
+      return;
+    }
+
+    // Esempio di validazioni su Size
+    if (!checkSizeConstraints(currentType, currentSubtype, tempRow)) {
+      return;
+    }
+
+    // Gestione Animations createNew => "childID_suffix"
+    if (currentType === "Animations" && createNew) {
+      let rawVal = tempRow.ChildObjectID || "";
+      let parts = rawVal.split("_");
+      if (parts.length === 2) {
+        let childID = parseInt(parts[0], 10);
+        let suffix = parts[1];
+        if (suffix === "S") {
+          tempRow.ChildObjectType = "Sprites";
+        } else if (suffix === "T") {
+          tempRow.ChildObjectType = "Tiles";
+        } else {
+          openInfoDialog("Invalid suffix in Sprite/Tile combo!", null);
+          return;
+        }
+        tempRow.ChildObjectID = childID;
+      } else {
+        openInfoDialog("Please select a valid Sprite/Tile in combo!", null);
+        return;
+      }
+    }
+
+    // Altri type => ChildObjectType in base alle regole
+    if (!createNew && currentType === "Animations") {
+      // do nothing
+    } else if (["Sprites","Tiles","Fonts","Images"].includes(currentType)) {
+      tempRow.ChildObjectType = "Palettes";
+    } else if (currentType === "Maps") {
+      tempRow.ChildObjectType = "Tiles";
+    }
+
+    // Validazione campi obbligatori
+    let requiredFields = getRequiredFieldsForType(currentType);
+    for (let field of requiredFields) {
+      if (tempRow[field] === undefined || tempRow[field] === null || tempRow[field] === "") {
+        openInfoDialog(`${getFieldNames(currentType, field)} is required!`, null);
+        return;
+      }
+    }
+
+    // Salvataggio
+    if (createNew) {
+      if (createNew && currentType !== "Palettes" && currentType !== "Animations") {
+          
+        tempRow.EditingSettings={
+          "GridEditorZoom":1.25,
+          "ObjectsGridZoom":1.25,
+          "ObjectsGridBackgroundColor":"#010101",
+          "PatternsGridZoom":1,
+          "PatternGridBackgroundColor":"#010101",
+          "PreviewZoom":1.25,
+          "PreviewdBackgroundColor":"#010101",
+          "GridEditorZoom":1.25,
+          "ShowGrid":true,
+          "Show8x8Blocks":true
+        };
+
+        
+        
+
+  
+        
+      }
+      dataStore.push(tempRow);
+    } else {
+      let idx = dataStore.findIndex(r => r.Type === existingRow.Type && r.ID === existingRow.ID);
+      if (idx >= 0) {
+        dataStore[idx] = tempRow;
+      }
+    }
+
+    saveDataStore();
+    dialog.classList.add("hidden");
+    document.getElementById("typeSelect").disabled = false;
+    document.getElementById("subtypeSelect").disabled = false;
+    editModeActive = false;
+    updateGrid();
+
+    // Show "New" button
+    document.getElementById("addButton").classList.remove("hidden");
+  });
+  divActions.appendChild(saveBtn);
+
+  let cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    console.log("Clicked CANCEL");
+    dialog.classList.add("hidden");
+    document.getElementById("typeSelect").disabled = false;
+    document.getElementById("subtypeSelect").disabled = false;
+    editModeActive = false;
+    updateGrid();
+
+    // Show "New" button
+    document.getElementById("addButton").classList.remove("hidden");
+  });
+  divActions.appendChild(cancelBtn);
+
+  dialog.appendChild(divActions);
+}
+
+/* ======================================================================================
+   FUNZIONE DI VALIDAZIONE SIZE
+   ====================================================================================== */
+function checkSizeConstraints(type, subtype, row) {
+  if (!row.Size) return true;
+
+  let [w, h] = row.Size.split("x");
+  let wNum = parseInt(w, 10) || 0;
+  let hNum = parseInt(h, 10) || 0;
+
+  if (type === "Sprites") {
+    // Validazione Sprites (già presente)
+    if (wNum < 8 || wNum > 64 || hNum < 8 || hNum > 64) {
+      openInfoDialog("Sprites size must be in [8..64]!", null);
+      return false;
+    }
+    if (wNum % 8 !== 0 || hNum % 8 !== 0) {
+      openInfoDialog("Sprites size must be multiples of 8", null);
+      return false;
+    }
+  }
+  else if (type === "Tiles" && subtype === "Bitmap") {
+    // Validazione Tiles bitmap (già presente)
+    if (wNum < 4 || wNum > 64 || hNum < 4 || hNum > 64) {
+      openInfoDialog("Tiles Bitmap size must be in [4..64]", null);
+      return false;
+    }
+  }
+  else if (type === "Images") {
+     if (wNum > 512 || hNum > 512 || wNum < 100 || hNum < 100) {
+      openInfoDialog("Images size must be in [100..512]", null);
+      return false;
+    }
+
+  }
+  else if (type === "Fonts") {
+    // RICHIESTA: size minima 50x50, massima 1024x512
+    if (wNum > 20 || hNum > 20 || wNum < 8 || hNum < 8) {
+      openInfoDialog("Fonts size must be in [8..20]", null);
+      return false;
+    }
+  }
+  else if (type === "Maps") {
+    // RICHIESTA: size minima 50x50, massima 1024x512
+    if (wNum > 100 || hNum > 100 || wNum < 2 || hNum < 2) {
+      openInfoDialog("Maps size must be in [2..100]", null);
+      return false;
+    }
+  }
+  return true;
+}
+
+/* ======================================================================================
+   getFieldsForType
+   ====================================================================================== */
+function getFieldsForType(type, row, createNew) {
+  let fields = [
+    { label: "ID: ", name: "ID", type: "text", disabled: true },
+    { label: "Description: ", name: "Description", type: "text", maxLength: 255 }
+  ];
+
+  if (type === "Sprites") {
+    // size abilitato se createNew
+    fields.push({
+      label: "Size (W/H): ",
+      name: "Size",
+      type: "spinpair",
+      min: 8,
+      max: 64,
+      step: 8,
+      disabled: !createNew
+    });
+    fields.push({
+      label: "Palette: ",
+      name: "ChildObjectID",
+      type: "combobox",
+      options: getPaletteOptions(),
+      disabled: false
+    });
+  }
+  else if (type === "Tiles") {
+    let isStandard = (row.Subtype === "Standard");
+    let sizeDisabled = false;
+    let step = 1;
+    let minVal = 1;
+    let maxVal = 64;
+
+    if (!createNew) {
+      sizeDisabled = true;
+    } else {
+      sizeDisabled = isStandard;
+      if (isStandard && !row.Size) {
+        row.Size = "8x8";
+      }
+    }
+    fields.push({
+      label: "Size (W/H): ",
+      name: "Size",
+      type: "spinpair",
+      min: minVal,
+      max: maxVal,
+      step: step,
+      disabled: sizeDisabled
+    });
+    fields.push({
+      label: "Palette: ",
+      name: "ChildObjectID",
+      type: "combobox",
+      options: getPaletteOptions(),
+      disabled: false
+    });
+  }
+  else if (type === "Maps") {
+    fields.push({
+      label: "Size (W/H): ",
+      name: "Size",
+      type: "spinpair",
+      min: 1,
+      max: 64,
+      step: 1,
+      disabled: !createNew
+    });
+    fields.push({
+      label: "Tile: ",
+      name: "ChildObjectID",
+      type: "combobox",
+      options: getTileOptions(),
+      disabled: false
+    });
+  }
+  else if (type === "Fonts") {
+    fields.push({
+      label: "Size (W/H): ",
+      name: "Size",
+      type: "spinpair",
+      min: 1,
+      max: 20,
+      step: 1,
+      disabled: !createNew
+    });
+    fields.push({
+      label: "Spaces (W/H): ",
+      name: "FontSpaces",
+      type: "spinpair-fontspaces",
+      min: 1,
+      max: 20,
+      step: 1,
+      disabled: false
+    });
+    fields.push({
+      label: "First character: ",
+      name: "FirstFontChar",
+      type: "char",
+      disabled: false
+    });
+    fields.push({
+      label: "Last character: ",
+      name: "LastFontChar",
+      type: "char",
+      disabled: false
+    });
+    fields.push({
+      label: "Palette: ",
+      name: "ChildObjectID",
+      type: "combobox",
+      options: getPaletteOptions(),
+      disabled: false
+    });
+  }
+  else if (type === "Palettes") {
+    fields.push({
+      label: "Colors: ",
+      name: "Values",
+      type: "palette-colors-editor"
+    });
+  }
+  else if (type === "Images") {
+    fields.push({
+      label: "Size (W/H): ",
+      name: "Size",
+      type: "spinpair",
+      min: 1,
+      max: 512,
+      step: 1,
+      disabled: !createNew
+    });
+    fields.push({
+      label: "Palette: ",
+      name: "ChildObjectID",
+      type: "combobox",
+      options: getPaletteOptions(),
+      disabled: false
+    });
+  }
+  else if (type === "Animations") {
+    // se createNew => combo, se modifica => no combo
+    if (createNew) {
+      fields.push({
+        label: "Sprite/Tile: ",
+        name: "ChildObjectID",
+        type: "combobox",
+        options: getSpriteTileOptionsWithSuffix(),
+        disabled: false
+      });
+    }
+  }
+
+  return fields;
+}
+
+/* ======================================================================================
+   COMBO UTILS
+   ====================================================================================== */
+
+function getPaletteOptions() {
+  let list = dataStore.filter(r => r.Type === "Palettes");
+  return list.map(r => ({ value: r.ID, label: r.Description }));
+}
+
+function getTileOptions() {
+  let list = dataStore.filter(r => r.Type === "Tiles");
+  return list.map(r => ({ value: r.ID, label: r.Description }));
+}
+
+function getSpriteTileOptionsWithSuffix() {
+  // per Animations => "ID_S" o "ID_T"
+  let list = dataStore.filter(r => r.Type === "Sprites" || r.Type === "Tiles");
+  return list.map(r => {
+    let suffix = (r.Type === "Sprites") ? "S" : "T";
+    let labelSuffix = (r.Type === "Sprites") ? "(Sprite)" : "(Tile)";
+    return {
+      value: r.ID + "_" + suffix,
+      label: r.Description + " " + labelSuffix
+    };
+  });
+}
+
+/* ======================================================================================
+   EDITOR DI "PALETTE-COLORS-EDITOR"
+   ====================================================================================== */
+function renderPaletteEditor(container, tempRow) {
+  let paletteArray = [];
+  if (tempRow.Values) {
+    try {
+      paletteArray = tempRow.Values;
+    } catch (e) {
+      paletteArray = getDefaultMSXColors(false);
+    }
+  } else {
+    paletteArray = getDefaultMSXColors(false);
+  }
+  tempPaletteColors = [...paletteArray]; // Copia i colori nella variabile globale
+
+  tempPaletteColors.forEach(colObj => {
+    let box = document.createElement("span");
+    box.className = "color-square";
+    let colorCode = colObj.color;
+    let hexID = (colObj.id + "").toUpperCase();
+    box.title =`RGB: ${colorCode}\nMSX: ${rgbToMsx((colorCode))}`; 
+
+    if (hexID === "0") {
+      box.classList.add("checkerboard");
+      box.style.cursor = "default";
+    } else {
+      box.style.backgroundColor = colorCode;
+      box.addEventListener("click", () => {
+        openColorPickerDialog(colorCode, newColor => {
+          colObj.color = newColor;
+          box.style.backgroundColor = newColor;
+          let labelSpan = box.querySelector("span");
+          let isDark = computeBrightness(newColor) < 128;
+          labelSpan.style.color = isDark ? "#fff" : "#000";
+        });
+      });
+    }
+
+    let labelSpan = document.createElement("span");
+    labelSpan.textContent = hexID;
+    let isDark = computeBrightness(colorCode) < 128;
+    labelSpan.style.color = isDark ? "#fff" : "#000";
+    if (hexID === "0") {
+      labelSpan.style.color = "#444";
+    }
+    box.appendChild(labelSpan);
+
+    container.appendChild(box);
+  });
+}
+
+function getDefaultMSXColors(isMSX2) {
+  if(isMSX2){
+    return [
+      { id: "0", color: "#000000" },
+      { id: "1", color: "#010101" },
+      { id: "2", color: "#21C842" },
+      { id: "3", color: "#5EDC78" },
+      { id: "4", color: "#5455ED" },
+      { id: "5", color: "#7D76FC" },
+      { id: "6", color: "#D4524D" },
+      { id: "7", color: "#42EBF5" },
+      { id: "8", color: "#FC5554" },
+      { id: "9", color: "#FF7978" },
+      { id: "A", color: "#D4C154" },
+      { id: "B", color: "#E6CE80" },
+      { id: "C", color: "#21B03B" },
+      { id: "D", color: "#C95BBA" },
+      { id: "E", color: "#CCCCCC" },
+      { id: "F", color: "#FFFFFF" }
+    ];
+  }
+  else{
+    return [
+      { id: "0", color: "#000000" },
+      { id: "1", color: "#010101" },
+      { id: "2", color: "#3EB849" },
+      { id: "3", color: "#74D07D" },
+      { id: "4", color: "#5955E0" },
+      { id: "5", color: "#8076F1" },
+      { id: "6", color: "#B95E51" },
+      { id: "7", color: "#65DBEF" },
+      { id: "8", color: "#DB6559" },
+      { id: "9", color: "#FF897D" },
+      { id: "A", color: "#CCC35E" },
+      { id: "B", color: "#DED087" },
+      { id: "C", color: "#3AA241" },
+      { id: "D", color: "#B766B5" },
+      { id: "E", color: "#CCCCCC" },
+      { id: "F", color: "#FFFFFF" }
+    ];
+  }
+}
+
+/* ======================================================================================
+   COLOR PICKER
+   ====================================================================================== */
+function openColorPickerDialog(initialColor, callback) {
+
+  const overlay = document.getElementById("colorPickerOverlay");
+  const colorInput = document.getElementById("colorPickerInput");
+  const okBtn = document.getElementById("colorPickerOk");
+  const cancelBtn = document.getElementById("colorPickerCancel");
+
+  overlay.style.display = "flex";
+  colorInput.value = rgbToHex(initialColor);
+
+  function onOk() {
+    let newColor = colorInput.value;
+    if(newColor==="#000000"){
+      newColor="#010101";
+    }
+    callback(newColor);
+    closeColorPickerOverlay();
+  }
+
+  function onCancel() {
+    closeColorPickerOverlay();
+  }
+
+  function closeColorPickerOverlay() {
+    overlay.style.display = "none";
+    okBtn.removeEventListener("click", onOk);
+    cancelBtn.removeEventListener("click", onCancel);
+
+  }
+
+  okBtn.addEventListener("click", onOk);
+  cancelBtn.addEventListener("click", onCancel);
+
+  // Detect color under mouse pointer
+  overlay.addEventListener("mousemove", (e) => {
+    const color = getColorAtMousePosition(e.clientX, e.clientY);
+    if (color) {
+      colorInput.value = rgbToHex(color);
+    }
+  });
+}
+
+function getColorAtMousePosition(x, y) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  canvas.width = 1;
+  canvas.height = 1;
+  context.drawImage(document.elementFromPoint(x, y), -x, -y);
+  const pixel = context.getImageData(0, 0, 1, 1).data;
+  return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+}
+
+function focusOnColorSquare() {
+  const colorSquare = document.querySelector('.color-square[style*="background-color"]');
+  if (colorSquare) {
+    colorSquare.focus();
+  }
+}
+
+/* ======================================================================================
+   CONFIRM DIALOG
+   ====================================================================================== */
+function openConfirmDialog(onConfirm) {
+  console.log("openConfirmDialog");
+  const overlay = document.getElementById("confirmOverlay");
+  const okBtn = document.getElementById("confirmOk");
+  const cancelBtn = document.getElementById("confirmCancel");
+
+  overlay.style.display = "flex";
+
+  let onOk = () => {
+    closeConfirm();
+    onConfirm();
+  };
+  let onCancel = () => {
+    closeConfirm();
+  };
+  function closeConfirm() {
+    overlay.style.display = "none";
+    okBtn.removeEventListener("click", onOk);
+    cancelBtn.removeEventListener("click", onCancel);
+  }
+  okBtn.addEventListener("click", onOk);
+  cancelBtn.addEventListener("click", onCancel);
+}
+
+/* ======================================================================================
+   INFO DIALOG
+   ====================================================================================== */
+function openInfoDialog(message, onClose) {
+  console.log("openInfoDialog", message);
+  const overlay = document.getElementById("infoOverlay");
+  const msg = document.getElementById("infoMessage");
+  const okBtn = document.getElementById("infoOk");
+
+  msg.textContent = message;
+  overlay.style.display = "flex";
+
+  let onOk = () => {
+    closeInfo();
+    if (onClose) onClose();
+  };
+  function closeInfo() {
+    overlay.style.display = "none";
+    okBtn.removeEventListener("click", onOk);
+  }
+  okBtn.addEventListener("click", onOk);
+}
+
+/* ======================================================================================
+   UTILITY COLORI
+   ====================================================================================== */
+function computeBrightness(hex) {
+  let c = hex.replace("#","");
+  if (c.length < 6) return 255;
+  let r = parseInt(c.substring(0,2), 16);
+  let g = parseInt(c.substring(2,4), 16);
+  let b = parseInt(c.substring(4,6), 16);
+  return (0.299*r + 0.587*g + 0.114*b);
+}
+
+
+
+/* ======================================================================================
+   EVENT LISTENERS (al caricamento)
+   ====================================================================================== */
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded");
+  document.getElementById("typeSelect").value = "Sprites";
+  updateSubtypeCombo();
+  updateGrid();
+
+  document.getElementById("typeSelect").addEventListener("change", () => {
+    updateSubtypeCombo();
+    updateGrid();
+  });
+  document.getElementById("subtypeSelect").addEventListener("change", () => {
+    updateGrid();
+  });
+
+  document.getElementById("addButton").addEventListener("click", () => {
+    console.log("Clicked ADD new record");
+    openEditDialog(null, true);
+  });
+
+  // Listen for messages from the extension
+  window.addEventListener('message', event => {
+    const message = event.data;
+    switch (message.command) {
+      case 'loadDataStore':
+        loadDataStore(message.data);
+        break;
+      case 'returnFromDetails':
+        const data = JSON.parse(message.data);
+        console.log("returnFromDetails", data);
+        // Update the data store with the reloaded data
+        dataStore = data;
+        // Apply filters based on the record's type and subtype
+        applyFilters(message.record.Type, message.record.Subtype);
+        // Update the grid with the reloaded data
+        updateGrid();
+        // Scroll to the specific record
+        scrollToRecord(message.record);
+        break;
+      case 'closeDetailsView':
+          //updateRecord(message.record,message.action);
+        break;
+    }
+  });
+
+  //function updateRecord(updatedRecord, action) {
+  //  const index = dataStore.findIndex(r => r.Type === updatedRecord.Type && r.ID === updatedRecord.ID);
+  //  if (index !== -1) {
+  //    console.log("updateRecordSettings", pdatedRecord.EditingSettings);
+  //    dataStore[index].EditingSettings = updatedRecord.EditingSettings;
+  //    if(action=="ok"){
+  //      dataStore[index].Values = updatedRecord.Values;
+  //    }
+  //    saveDataStore();
+  //    updateGrid();
+  //  }
+  //}
+
+  document.getElementById("dataGrid").addEventListener("click", (e) => {
+    if (e.target.classList.contains("details-button")) {
+      const recordId = e.target.dataset.recordId;
+      const currentType = document.getElementById("typeSelect").value;
+      let currentSubtype = "";
+      if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+        currentSubtype = document.getElementById("subtypeSelect").value;
+      }
+      const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
+      openDetailsView(record);
+    }
+  });
+
+  document.getElementById("detailsOkButton").addEventListener("click", closeDetailsView);
+  document.getElementById("detailsCancelButton").addEventListener("click", closeDetailsView);
+
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && (e.key === "+" || e.key === "-" || e.key === "=")) {
+      e.preventDefault();
+      zoomLevel += (e.key === "+" || e.key === "=") ? 0.1 : -0.1;
+      zoomLevel = Math.max(0.1, zoomLevel);
+      updateZoom();
+    }
+  });
+
+  document.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      zoomLevel += e.deltaY < 0 ? 0.1 : -0.1;
+      zoomLevel = Math.max(0.1, 0.1);
+      updateZoom();
+    }
+  });
+
+  function updateZoom() {
+    document.querySelectorAll(".image-grid img").forEach(img => {
+      img.style.width = `${parseInt(img.style.width) * zoomLevel}px`;
+      img.style.height = `${parseInt(img.style.height) * zoomLevel}px`;
+    });
+  }
+
+  const splitter = document.getElementById("splitter");
+  splitter.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    document.addEventListener("mousemove", resizePanes);
+    document.addEventListener("mouseup", () => {
+      document.removeEventListener("mousemove", resizePanes);
+    });
+  });
+
+  function resizePanes(e) {
+    const leftPane = document.querySelector(".images-panel");
+    const rightPane = document.querySelector(".drawing-panel");
+    const totalWidth = leftPane.offsetWidth + rightPane.offsetWidth;
+    const leftWidth = e.clientX / totalWidth * 100;
+    leftPane.style.flex = `0 0 ${leftWidth}%`;
+    rightPane.style.flex = `0 0 ${100 - leftWidth}%`;
+  }
+
+  const splitterHorizontal = document.getElementById("splitterHorizontal");
+  splitterHorizontal.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    document.addEventListener("mousemove", resizeHorizontalPanes);
+    document.addEventListener("mouseup", () => {
+      document.removeEventListener("mousemove", resizeHorizontalPanes);
+    });
+  });
+
+  function resizeHorizontalPanes(e) {
+    const topPane = document.querySelector(".image-grid-panel");
+    const bottomPane = document.querySelector(".patterns-grid-panel");
+    const totalHeight = topPane.offsetHeight + bottomPane.offsetHeight;
+    const topHeight = e.clientY / totalHeight * 100;
+    topPane.style.flex = `0 0 ${topHeight}%`;
+    bottomPane.style.flex = `0 0 ${100 - topHeight}%`;
+  }
+});
+
+/* ======================================================================================
+   OPEN DETAILS VIEW
+   ====================================================================================== */
+let zoomLevel = 1;
+let focusedImage = null;
+let backgroundColor = "#ffffff";
+let patternsBackgroundColor = "#ffffff";
+
+function openDetailsView(record) {
+  const childRecord = dataStore.find(r => r.Type === record.ChildObjectType && r.ID.toString() === record.ChildObjectID.toString());
+  
+  vscode.postMessage({
+    command: 'openDetailsView',
+    record: record,
+    childRecord: childRecord
+  });
+}
+
+function closeDetailsView() {
+  document.getElementById("mainPanel").classList.add("active");
+  document.getElementById("detailsPanel").classList.remove("active");
+}
+
+/* ======================================================================================
+   getRequiredFieldsForType
+   ====================================================================================== */
+function getRequiredFieldsForType(type) {
+  switch (type) {
+    case "Sprites":
+      return ["Description", "Size", "ChildObjectID"];
+    case "Tiles":
+      return ["Description", "Size", "ChildObjectID"];
+    case "Maps":
+      return ["Description", "Size", "ChildObjectID"];
+    case "Fonts":
+      return ["Description", "Size", "FontSpaces", "FirstFontChar", "LastFontChar", "ChildObjectID"];
+    case "Palettes":
+      return ["Description", "Values"];
+    case "Images":
+      return ["Description", "Size", "ChildObjectID"];
+    case "Animations":
+      return ["Description", "ChildObjectID"];
+    default:
+      return [];
+  }
+}
+function getFieldNames(type,fieldName) {
+  switch (type) {
+    case "Sprites":
+
+        switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Size":
+                return "Size";
+            case "ChildObjectID":
+                return "Palette";
+        }
+    case "Tiles":
+       switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Size":
+                return "Size";
+            case "ChildObjectID":
+                return "Palette";
+        }
+    case "Maps":
+        switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Size":
+                return "Size";
+            case "ChildObjectID":
+                return "Tile";
+        }
+    case "Fonts":
+        switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Size":
+                return "Size";
+            case "FontSpaces":
+                return "Spaces (H/V)";
+            case "FirstFontChar":
+                return "First char";
+            case "LastFontChar":
+                return "Last char";
+            case "ChildObjectID":
+                return "PalettTilee";
+        }
+    case "Palettes":
+        switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Values":
+                return "Colors";
+        }
+    case "Images":
+    switch(fieldName){
+            case "Description":
+                return "Description";
+            case "Size":
+                return "Size";
+            case "ChildObjectID":
+                return "Palette";
+        }
+    case "Animations":
+    switch(fieldName){
+            case "Description":
+                return "Description";
+            case "ChildObjectID":
+                return "Sprite/Tile";
+        }   
+    default:
+      return [];
+  }
+}
+
+function scrollToRecord(record) {
+  const rows = document.querySelectorAll("#dataGrid tbody tr");
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length > 0 && cells[0].textContent == record.ID) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.add("highlight");
+      setTimeout(() => row.classList.remove("highlight"), 2000);
+    }
+  });
+}
+
+function applyFilters(type, subtype) {
+  document.getElementById("typeSelect").value = type;
+  updateSubtypeCombo();
+  if (subtype) {
+    document.getElementById("subtypeSelect").value = subtype;
+  }
+}
+
+
+
+</script>
+</body>
+</html>

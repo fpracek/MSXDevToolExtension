@@ -1,0 +1,34 @@
+{
+  "name": "msxdevtool-extension",
+  "displayName": "MSXDevTool Extension",
+  "description": "MSXDevTool Extension for Visual Studio Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "publisher": "LaTuaOrganizzazioneODNome",
+  "activationEvents": [
+    "onCommand:msxdevtool-extension.openWebview"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "msxdevtool-extension.openWebview",
+        "title": "Open MSX Sprite Grid Editor"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "16.x",
+    "typescript": "^4.8.0"
+  }
+}

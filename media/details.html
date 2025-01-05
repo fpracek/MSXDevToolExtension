@@ -1,0 +1,2875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MSX Sprite Grid Editor</title>
+  <style>
+    .grid-container {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+      width: 100%;
+      justify-content: flex-start; /* Giustifica a sinistra */
+    }
+
+    .tab {
+      padding: 0px 20px;
+      cursor: pointer;
+      border-bottom: none;
+      margin-bottom: -1px;
+      color: black; /* Testo nero */
+    }
+
+    .tab.active {
+      background-color: #fff;
+      border-bottom: 1px solid #fff;
+      font-weight: bold; /* Grassetto */
+      font-size: 1.1em; /* Font leggermente più grande */
+    }
+
+    .tab-content {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+      margin-bottom: 20px; /* Aggiunge spazio tra la palette e la griglia */
+    }
+
+    .color {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      position: relative;
+    }
+
+    .color.selected {
+      font-weight: bold;
+      border: 2px solid white; /* Linea bianca di 2 pixel */
+      box-shadow: 0 0 0 1px black inset;
+    }
+
+    .color .inner {
+      width: 16px;
+      height: 16px;
+      background-color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: black; /* Font nero */
+    }
+
+    .grid-container {
+      position: relative;
+      overflow: auto;
+      border: 1px solid #000;
+      width: 80%;
+      height: 80%;
+    }
+
+    canvas {
+      background-color: #fff;
+      cursor: default; /* Cambia il cursore a freccetta */
+      display: block;
+      border: 1px solid white; /* Add white border */
+    }
+
+    .checkerboard {
+      background-size: 8px 8px;
+      background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-position: 0 0, 8px 8px;
+    }
+
+    input[type=number] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input {
+      width: 50px;
+      text-align: center;
+    }
+
+    #contextMenu ul li {
+      color: gray; /* Default color for inactive items */
+    }
+    #contextMenu ul li.active {
+      color: black; /* Color for active items */
+    }
+
+    .selected-cell {
+      background-color: rgba(128, 128, 128, 0.5); /* Grigio trasparente */
+    }
+
+    #contextMenu {
+      pointer-events: auto; /* Garantisce che i click sugli elementi siano recepiti */
+    }
+
+    .error {
+      border: 1px solid red;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .visible {
+      display: block;
+    }
+
+    #objectTable {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    #objectTable th, #objectTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    #objectTable tr.selected {
+      background-color: #f0f0f0;
+      border: 1px solid red;
+    }
+  </style>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden; /* Prevent scrollbars on the body */
+      user-select: none; /* Previene la selezione del testo */
+      -webkit-user-select: none; /* Previene la selezione del testo */
+      user-select: none; /* Previene la selezione del testo */
+    }
+    .details-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .details-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: white;
+      flex-shrink: 0;
+    }
+    .main-detail-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .title-area {
+      padding: 10px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+      flex-shrink: 0;
+    }
+    .editing-area {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      overflow: hidden;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .splitter {
+      width: 5px;
+      background: #ccc;
+      cursor: col-resize;
+      flex-shrink: 0;
+    }
+    .panel {
+      width: 50%; /* Set initial width */
+      overflow: auto;
+    }
+    .horizontal-splitter {
+      height: 5px;
+      background: #ccc;
+      cursor: row-resize;
+      flex-shrink: 0;
+    }
+    .vertical-panel {
+      height: 50%; /* Set initial height */
+      overflow: auto;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-image {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .preview-image-title {
+      flex-shrink: 0;
+      padding: 5px;
+      background: #e0e0e0;
+      border-bottom: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+    }
+    .preview-image-canvas {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      overflow: auto;
+      border: 1px solid white;
+    }
+    .preview-image-info {
+      flex-shrink: 0;
+      padding: 5px;
+      background: #e0e0e0;
+      border-top: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+    }
+    .tab {
+      overflow: hidden;
+      border-bottom: 1px solid #ccc;
+      color: white;
+    }
+
+    .tab button {
+      background-color: #ccc; /* Set initial background color */
+      float: left;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      transition: 0.3s;
+    }
+
+    .tab button:hover {
+      background-color: #ddd;
+    }
+
+    .tab button.active {
+      background-color: #ccc;
+    }
+
+    .tabcontent {
+      display: none;
+      padding: 6px 12px;
+      border-top: none;
+      height: calc(100%); /* Default height */
+      box-sizing: border-box;
+      background: black; /* Make the background transparent */
+      overflow: auto; /* Allow scrollbars */
+    }
+    .images-viewer {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .images-buttons {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px;
+      background: #e0e0e0;
+      border-top: 1px solid #ccc;
+      flex-shrink: 0;
+    }
+
+    .right-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .images-grid {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 5px;
+      overflow: auto;
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block; /* Ensure the container wraps around the image */
+      padding: 3px; /* 1px for white border + 2px for transparent border */
+      background: white; /* Outer white border */
+      box-sizing: content-box; /* Ensure padding is included in the element's dimensions */
+      cursor: move; /* Show move cursor when dragging */
+      border: 1px solid white; /* Always have a 1px white border */
+    }
+
+    .image-container.no-drag {
+      cursor: default; /* Default cursor when dragging is disabled */
+    }
+
+    .image-container img {
+      display: block;
+      image-rendering: pixelated; /* Ensure images are not blurred */
+    }
+    .image-container img:focus {
+      border-width: 2px;
+    }
+
+    .image-container.focused {
+      outline: 3px solid white; /* Outer white border */
+      box-shadow: 0 0 0 3px black; /* Inner black border */
+    }
+
+    .placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .dialog {
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #666;
+      border-radius: 4px;
+      min-width: 250px;
+      text-align: center;
+      color: black;
+    }
+    .color-square {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 1px solid #999;
+      vertical-align: middle;
+      box-sizing: border-box;
+      margin-left: 2px; /* Add margin between button and color square */
+      cursor: pointer; /* Add cursor pointer to indicate it's clickable */
+    }
+    .color-picker-dialog {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .color-picker-dialog label,
+    .color-picker-dialog input,
+    .color-picker-dialog button {
+      margin: 0 5px;
+    }
+    th, td {
+      width: 24px; /* Ensure cells are square */
+      height: 24px; /* Ensure cells are square */
+      
+    }
+    th {
+      /* padding: 8px; */
+      background: #f0f0f0; /* Background color for headers */
+      border-bottom: 2px solid #ccc; /* Add bottom border to headers */
+    }
+    /* td {
+      padding: 4px;
+    } */
+    .header-spacing {
+      height: 24px; /* Ensure spacing is square */
+    }
+    .row-header-spacing {
+      width: 24px; /* Ensure spacing is square */
+    }
+    .table-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .focused {
+      outline: 2px solid red;
+    }
+    .grid-editor-container {
+      height: calc(100% - 60px); /* Adjust height to fill remaining space */
+      padding-left: 10px; /* Add padding to move the grid canvas to the right */
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .color-selector {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 10px;
+      gap: 5px; /* Add gap between squares */
+    }
+    .color-square {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 35px; /* Increased by 75% */
+      height: 35px; /* Increased by 75% */
+      border: 1px solid #999;
+      vertical-align: middle;
+      box-sizing: border-box;
+      cursor: pointer;
+      position: relative;
+      text-align: center; /* Center text horizontally */
+    }
+    .color-square span {
+      font-size: 21px; /* Increased by 75% */
+      font-weight: bold;
+      display: inline-block;
+      width: 100%; /* Ensure the span takes the full width of the square */
+      text-align: center; /* Center text horizontally */
+    }
+    .color-square.active {
+      outline: 3px solid red; /* Outer red border */
+      box-shadow: 0 0 0 2px black; /* Inner black border */
+    }
+    .color-square:focus span {
+      font-weight: bold; /* Make text bold when focused */
+    }
+    .checkerboard {
+      background: repeating-linear-gradient(
+        45deg,
+        #ccc 0,
+        #ccc 5px,
+        #fff 5px,
+        #fff 10px
+      );
+      cursor: not-allowed;
+    }
+    .preview-image-canvas img {
+      transition: transform 0.2s; /* Smooth zoom transition */
+      max-width: 100%; /* Ensure the image does not expand beyond its container */
+      max-height: calc(100% - 40px); /* Ensure the image does not overlap with title and info */
+      image-rendering: pixelated; /* Ensure images are not blurred */
+    }
+    .canvas-container {
+      display: flex;
+      align-items: center;
+    }
+    .canvas-container canvas {
+      border: 1px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="details-view">
+    <div class="main-detail-panel">
+      <div class="title-area" id="titleArea"></div>
+      <div class="editing-area" id="editingArea">
+        <div class="panel left-panel" id="leftPanel">
+          <div class="vertical-panel" id="previewPanel">
+            <div class="preview-image" id="previewImage" >
+              <div class="preview-image-title" id="previewImageInfo"></div>
+              <div class="preview-image-canvas" id="previewImageCanvas" style="background-color: black;">
+                <img id="imageCanvas" />
+              </div>
+              
+            </div>
+          </div>
+          <div class="horizontal-splitter" id="horizontalSplitter"></div>
+          <div class="vertical-panel" id="selectionPanel" style="overflow-y: hidden;"></div>
+        </div>
+        <div class="splitter" id="splitter"></div>
+        <div class="panel" id="rightPanel">
+          
+          <div class="color-selector" id="colorSelector"></div>
+          <div class="grid-editor-container" class="grid-container" id="gridContainer">
+            <div class="canvas-container">
+              <canvas id="rowOrOptionsCanvas"></canvas>
+              <canvas id="gridCanvas"></canvas>
+              <canvas id="rowColorCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="details-buttons">
+        <button id="detailsCancelButton">Cancel</button>
+        <button id="detailsOkButton">OK</button>
+      </div>
+    </div>
+  </div>
+  <div id="confirmOverlay" class="overlay">
+    <div id="confirmDialog" class="dialog">
+      <p>Are you sure you want to remove this image?</p>
+      <button id="confirmOk">Yes</button>
+      <button id="confirmCancel">No</button>
+    </div>
+  </div>
+  <div id="colorPickerOverlay" class="overlay">
+    <div id="colorPickerDialog" class="dialog color-picker-dialog">
+      <label>Choose color:</label>
+      <input type="color" id="colorPickerInput" />
+      <button id="colorPickerOk">OK</button>
+      <button id="colorPickerCancel">Cancel</button>
+    </div>
+  </div>
+  <div id="contextMenu" style="display:none; position:absolute; background:white; border:1px solid #ccc; z-index:1000;">
+    <ul style="list-style:none; padding:5px; margin:0;">
+      <li id="undoAction" style="padding:5px; cursor:pointer;">Undo (Ctrl+Z)</li>
+      <li id="redoAction" style="padding:5px; cursor:pointer;">Redo (Ctrl+Y)</li>
+      <hr style="margin: 5px 0;">
+      <li id="selectAll" style="padding:5px; cursor:pointer;">Select All (Ctrl+A)</li>
+      <li id="copySelection" style="padding:5px; cursor:pointer;">Copy (Ctrl+C)</li>
+      <li id="cutSelection" style="padding:5px; cursor:pointer;">Cut (Ctrl+X)</li>
+      <li id="pasteSelection" style="padding:5px; cursor:pointer;">Paste (Ctrl+V)</li>
+      <hr style="margin: 5px 0;">
+      <li id="rotateRight" style="padding:5px; cursor:pointer;">Rotate 90° Right (Ctrl+Shift+R)</li>
+      <li id="rotateLeft" style="padding:5px; cursor:pointer;">Rotate 90° Left (Ctrl+Shift+L)</li>
+      <hr style="margin: 5px 0;">
+      <li id="shiftLeft" style="padding:5px; cursor:pointer;">Shift Left (Shift+←)</li>
+      <li id="shiftRight" style="padding:5px; cursor:pointer;">Shift Right (Shift+→)</li>
+      <li id="shiftUp" style="padding:5px; cursor:pointer;">Shift Up (Shift+↑)</li>
+      <li id="shiftDown" style="padding:5px; cursor:pointer;">Shift Down (Shift+↓)</li>
+      <hr style="margin: 5px 0;">
+      <li id="verticalFlip" style="padding:5px; cursor:pointer;">Vertical Flip (Shift+V)</li>
+      <li id="horizontalFlip" style="padding:5px; cursor:pointer;">Horizontal Flip (Shift+H)</li>
+      <hr style="margin: 5px 0;">
+      <li id="clearAll" style="padding:5px; cursor:pointer;">Clear All (Shift+C)</li>
+    </ul>
+  </div>
+  <script src="./utils.js"></script>
+  
+  <script>
+    const vscode = acquireVsCodeApi();
+    let currentRecord = null;
+    let currentChildRecord = null;
+    let draggedElement = null;
+    let placeholder = null;
+    let focusedElementIds = { imagesList1: null, imagesList2: null };
+    let draggedElementParent = null;
+    let currentObjectID = -1;
+    let currentMatrixID = -1;
+    let currentPaletteColorID = 0;
+    let isDrawing = false;
+    let isErasing = false;
+
+    let selectionStart = null;
+    let selectionEnd = null;
+    let copiedCells = [];
+    let isPasting = false;
+    let pasteStart = null;
+
+    let undoStack = [];
+    let redoStack = [];
+
+    window.addEventListener('message', event => {
+      const message = event.data;
+      switch (message.command) {
+        case 'loadDetails':
+          loadDetails(message.record, message.childRecord, message.bufferedCopiedCells);
+          break;
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'unload' });
+    });
+
+    function loadDetails(record, childRecord, bufferedCopiedCells) {
+      copiedCells = bufferedCopiedCells || [];
+      currentRecord = record;
+      currentChildRecord = childRecord;
+      currentObjectID = -1;
+      currentMatrixID = (record.Type === "Sprites" && record.Subtype === "Type 2") ? 1 : -1;
+      const titleArea = document.getElementById('titleArea');
+      titleArea.textContent = `${record.Type}: ${record.ID} - ${record.Description}`;
+      
+      
+      
+      const previewImageInfo = document.getElementById('previewImageInfo');
+      previewImageInfo.textContent = 'Additional info about the image.';
+      
+      const selectionPanel = document.getElementById('selectionPanel');
+      let tabsHtml = '';
+      let tabContentsHtml = '';
+
+      if (record.Type==="Sprites" && record.Subtype === "Type 2") {
+        tabsHtml = `
+          <div class="tab" style="background-color: black;">
+            <button class="tablinks active" onclick="openTab(event, 'Tab1')" id="defaultOpen" style="background-color: rgb(0, 0, 0);color: white;">${record.Type}</button>
+            <button class="tablinks" onclick="openTab(event, 'Tab2')"style="background-color: rgb(0, 0, 0);color: white;">Patterns</button>
+            <button class="tablinks" onclick="openTab(event, 'Tab3')" style="background-color: rgb(0, 0, 0);color: white;" >Or colors table</button>
+            <button class="tablinks" onclick="openTab(event, 'Tab4')" style="background-color: rgb(0, 0, 0);color: white;">Or colors combinations</button>
+          </div>
+        `;
+
+        tabContentsHtml = `
+          <div id="Tab1" class="tabcontent" style="display: block; height: calc(100% - 45px);">
+            ${createImagesViewer('imagesList1')}
+          </div>
+          <div id="Tab2" class="tabcontent" style="height: calc(100% - 45px);">
+            ${createImagesViewer('imagesList2', false, false)}
+          </div>
+          <div id="Tab3" class="tabcontent" style="height: calc(100% - 45px);">
+            <div id="orTableGrid" class="table-container"></div>
+          </div>
+          <div id="Tab4" class="tabcontent" style="height: calc(100% - 45px);">
+            <div id="colorGridContainer"></div>
+          </div>
+        `;
+      } else {
+        tabContentsHtml = `
+          <div id="Tab1" class="tabcontent" style="display: block; height: calc(100%);">
+            ${createImagesViewer('imagesList1')}
+          </div>
+        `;
+      }
+
+      selectionPanel.innerHTML = tabsHtml + tabContentsHtml;
+      
+      const rightPanel = document.getElementById('rightPanel');
+
+      // Set initial zoom levels from EditingSettings
+      if (!record.EditingSettings) {
+        record.EditingSettings = {};
+      }
+      if (!record.EditingSettings.ObjectsGridZoom) {
+        record.EditingSettings.ObjectsGridZoom = 1;
+      }
+      if (!record.EditingSettings.PatternsGridZoom) {
+        record.EditingSettings.PatternsGridZoom = 1;
+      }
+      if (!currentRecord.EditingSettings.PreviewZoom) {
+        currentRecord.EditingSettings.PreviewZoom = 1;
+      }
+      if (!currentRecord.EditingSettings.GridEditorZoom) {
+        currentRecord.EditingSettings.GridEditorZoom = 1;
+      }
+      if (record.Values == null || record.Values.length == 0) {
+        record.Values = [];
+        record.Values.push({
+          ID: 1,
+          Order: 1,
+          Name: record.Type.slice(0, -1) + " #1",
+          Matrices: [{
+            ID: 1,
+            Values: InitObjectMatrices(record.Size),
+            OrOptions: initOrOptions(record.Size)
+          }]
+        });
+      }
+
+      
+
+      updateTab1Grid(record,childRecord);
+
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+     
+
+      // Set initial background colors from EditingSettings
+      if (record.EditingSettings) {
+        const colorSquare1 = document.querySelector('#imagesList1 .color-square');
+        const colorSquare2 = document.querySelector('#imagesList2 .color-square');
+        if (colorSquare1 && record.EditingSettings.ObjectsGridBackgroundColor) {
+          colorSquare1.style.backgroundColor = record.EditingSettings.ObjectsGridBackgroundColor;
+        }
+        if (colorSquare2 && record.EditingSettings.PatternGridBackgroundColor) {
+          colorSquare2.style.backgroundColor = record.EditingSettings.PatternGridBackgroundColor;
+        }
+      }
+
+      // Render OR Table Grid if applicable
+      if (record.Type === "Sprites" && record.Subtype === "Type 2") {
+        renderOrTableGrid();
+        createColorGrid(document.getElementById('colorGridContainer'), childRecord.Values.map(color => color.color));
+        document.getElementById('rowOrOptionsCanvas').style.display = 'block';
+        document.getElementById('rowColorCanvas').style.display = 'block';
+      } else {
+        document.getElementById('rowOrOptionsCanvas').style.display = 'none';
+        document.getElementById('rowColorCanvas').style.display = 'none';
+      }
+
+      // Ensure all tabs have the same background color initially
+      const tablinks = document.getElementsByClassName("tablinks");
+      for (let i = 0; i < tablinks.length; i++) {
+        tablinks[i].style.backgroundColor = '#000000';
+        tablinks[i].style.color = '#FFFFFF';
+      }
+
+      // Add resize observer to recreate the grid on resize
+      const resizeObserver = new ResizeObserver(() => {
+        createColorGrid(document.getElementById('colorGridContainer'), childRecord.Values.map(color => color.color));
+      });
+      resizeObserver.observe(selectionPanel);
+
+      // Set focus to the first image in Tab1 if it exists
+      const firstImageContainer = document.querySelector('#imagesList1 .image-container');
+      if (firstImageContainer) {
+        focusImage({ currentTarget: firstImageContainer }, 'imagesList1');
+      }
+
+
+      renderColorSelector(childRecord.Values);
+      const canvas = document.getElementById('gridCanvas');
+      canvas.addEventListener('mousedown', handleCanvasMouseDown);
+
+      // Set Tab 1 as active and highlight its tab if Subtype is "Type 2"
+      if (record.Subtype === "Type 2") {
+        document.getElementById('defaultOpen').click();
+      }
+      currentPaletteColorID=0;
+      renderColorSelector(childRecord.Values);
+      // Explicitly set the color with ID=1 as active
+      setTimeout(() => {
+        const initialColorSquare = document.querySelector(`.color-square[title*="ID 0"]`);
+        if (initialColorSquare) {
+          initialColorSquare.classList.add('active');
+          initialColorSquare.focus();
+          currentPaletteColorID = 0;
+          updateCanvasGridColor();
+          toggleBlockSeparatorVisibility();
+          toggleBlockSeparatorVisibility();
+        }
+      }, 100); // Adjust the delay as needed
+
+      // Add checkboxes for grid and block separator visibility
+      const checkboxContainer = document.createElement('div');
+      checkboxContainer.className = 'checkbox-container';
+      checkboxContainer.innerHTML = `
+        <label><input type="checkbox" id="toggleGrid"> Show Grid</label>
+        <label id="toggleBlockSeparatorContainer"><input type="checkbox" id="toggleBlockSeparator"> Show 8x8 Block Separator</label>
+      `;
+      rightPanel.insertBefore(checkboxContainer, rightPanel.firstChild);
+
+      document.getElementById('toggleGrid').addEventListener('change', toggleGridVisibility);
+      document.getElementById('toggleBlockSeparator').addEventListener('change', toggleBlockSeparatorVisibility);
+
+      // Hide block separator checkbox if not applicable
+      const [width, height] = record.Size.split('x').map(Number);
+      if (record.Type !== "Sprites" || (width === 8 && height === 8)) {
+        document.getElementById('toggleBlockSeparatorContainer').style.display = 'none';
+      }
+
+      // Initialize grid and block separator visibility from EditingSettings
+      if (!record.EditingSettings) {
+        record.EditingSettings = {};
+      }
+      document.getElementById('toggleGrid').checked = record.EditingSettings.ShowGrid !== false;
+      document.getElementById('toggleBlockSeparator').checked = record.EditingSettings.ShowBlockSeparator !== false;
+
+      // Add click event listener to toggle OrOptions
+      const rowOrOptionsCanvas = document.getElementById('rowOrOptionsCanvas');
+        rowOrOptionsCanvas.addEventListener('click', (event) => {
+          const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1);
+          const rect = rowOrOptionsCanvas.getBoundingClientRect();
+          const y = event.clientY - rect.top;
+          const row = Math.floor(y / cellSize);
+          toggleOrOption(row);
+        });
+
+      updateGridCanvas();
+      
+    }
+    async function updateTab1Grid(record,childRecord) {
+      const patterns=record.Values;
+      objectsList = [];
+      patterns.forEach(pattern => {
+        objectsList.push({
+          ID: pattern.ID,
+          Description: pattern.Name,
+          Image: getImageFromObject(pattern.ID, record, childRecord),
+          Order: pattern.Order
+        });
+      });
+    }
+    async function updateGridCanvas() {
+      const canvas = document.getElementById('gridCanvas');
+      const context = canvas.getContext('2d');
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1); // Size of each cell with zoom
+      canvas.width = width * cellSize;
+      canvas.height = height * cellSize;
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      // Create checkerboard pattern proportional to zoom level
+      const checkerboardCanvas = document.createElement('canvas');
+      const checkerSize = Math.max(8 * (currentRecord.EditingSettings.GridEditorZoom || 1), 1);
+      checkerboardCanvas.width = checkerSize;
+      checkerboardCanvas.height = checkerSize;
+      const checkerboardContext = checkerboardCanvas.getContext('2d');
+      checkerboardContext.fillStyle = '#ccc';
+      checkerboardContext.fillRect(0, 0, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillRect(checkerSize / 2, checkerboardCanvas.height / 2, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillStyle = '#fff';
+      checkerboardContext.fillRect(checkerSize / 2, 0, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillRect(0, checkerSize / 2, checkerSize / 2, checkerSize / 2);
+      const checkerboardPattern = context.createPattern(checkerboardCanvas, 'repeat');
+
+      matrix.forEach(cell => {
+        const colorObj = currentChildRecord.Values.find(p => p.id.toString() === cell.Value);
+        const color = colorObj ? colorObj.color : '#000000';
+        if (color === '#000000') {
+          context.fillStyle = checkerboardPattern;
+        } else {
+          context.fillStyle = color;
+        }
+        context.fillRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
+        if (currentRecord.EditingSettings.ShowGrid) {
+          context.strokeStyle = '#fff';
+          context.strokeRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
+        }
+      });
+
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        const rowOrOptionsCanvas = document.getElementById('rowOrOptionsCanvas');
+        const rowColorCanvas = document.getElementById('rowColorCanvas');
+        const rowOrOptionsContext = rowOrOptionsCanvas.getContext('2d');
+        const rowColorContext = rowColorCanvas.getContext('2d');
+        rowOrOptionsCanvas.width = cellSize;
+        rowOrOptionsCanvas.height = height * cellSize;
+        rowColorCanvas.width = cellSize;
+        rowColorCanvas.height = height * cellSize;
+
+        // Draw OrOptionColumn
+        for (let row = 0; row < height; row++) {
+          const orOption = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID).OrOptions[row];
+          rowOrOptionsContext.fillStyle = orOption ? '#00FF00' : '#000000';
+          rowOrOptionsContext.fillRect(0, row * cellSize, cellSize, cellSize);
+          rowOrOptionsContext.strokeStyle = '#fff';
+          rowOrOptionsContext.strokeRect(0, row * cellSize, cellSize, cellSize);
+
+          // Add tooltip
+          const tooltipText = `OR option for row ${row + 1} is set to ${orOption ? 'ON' : 'OFF'}`;
+          rowOrOptionsCanvas.title = tooltipText;
+
+          // Draw checkmark if orOption is true
+          if (orOption) {
+            rowOrOptionsContext.strokeStyle = '#00FF00';
+            rowOrOptionsContext.lineWidth = 2;
+            rowOrOptionsContext.beginPath();
+            rowOrOptionsContext.moveTo(cellSize * 0.2, row * cellSize + cellSize * 0.5);
+            rowOrOptionsContext.lineTo(cellSize * 0.4, row * cellSize + cellSize * 0.7);
+            rowOrOptionsContext.lineTo(cellSize * 0.8, row * cellSize + cellSize * 0.3);
+            rowOrOptionsContext.stroke();
+          }
+        }
+
+        // Draw RowColor
+        for (let row = 0; row < height; row++) {
+          const rowColor = getRowColor(matrix, row);
+          console.log("PIPPO_1",row,rowColor);
+          if (rowColor === '#000000') {
+            rowColorContext.fillStyle = checkerboardPattern;
+          } else {
+            console.log("PIPPO_2",row,rowColor);
+            rowColorContext.fillStyle = rowColor;
+          }
+          rowColorContext.fillRect(0, row * cellSize, cellSize, cellSize);
+          rowColorContext.strokeStyle = '#fff';
+          rowColorContext.strokeRect(0, row * cellSize, cellSize, cellSize);
+        }
+        redrawOptionsCanvas();
+        
+        
+      }
+
+      // Draw black lines dividing 8x8 cell blocks if currentRecord.Type is "Sprites" && currentRecord.EditingSettings.ShowBlockSeparator
+      if (currentRecord.Type === "Sprites" && currentRecord.EditingSettings.ShowBlockSeparator) {
+        context.strokeStyle = "#000000";
+        context.lineWidth = 3;
+        for (let x = 8 * cellSize; x < canvas.width; x += 8 * cellSize) {
+          context.beginPath();
+          context.moveTo(x, 0);
+          context.lineTo(x, canvas.height);
+          context.stroke();
+        }
+        for (let y = 8 * cellSize; y < canvas.height; y += 8 * cellSize) {
+          context.beginPath();
+          context.moveTo(0, y);
+          context.lineTo(canvas.width, y);
+          context.stroke();
+        }
+      }
+
+      drawSelection(); // Draw selection if any
+      drawPastedSelection(); // Draw pasted selection if any
+      renderImages('imagesList1', objectsList); // Update the image in Tab1
+    }
+
+    function getRowColor(matrix, row) {
+      const rowCells = matrix.filter(cell => cell.PosY === row);
+      var color='#000000';
+      //if (rowCells.length === 0) return '#000000';
+      rowCells.forEach(cell => {
+
+        if (cell.Value.toString() !== '0') {
+         // console.log("PIPPO",row,currentChildRecord.Values.find(p => p.id.toString() === cell.Value.toString()).color);
+          color= currentChildRecord.Values.find(p => p.id.toString() === cell.Value.toString()).color;
+        }
+      });
+      return color;
+     
+    }
+
+    function handleCanvasMouseDown(event) {
+      if (event.ctrlKey && event.button === 2) {
+        // Prevent erasing when opening context menu
+        return;
+      }
+      
+      // Close the context menu if it is open
+      closeContextMenu();
+
+      const canvas = document.getElementById('gridCanvas');
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const col = Math.floor(x / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
+      const row = Math.floor(y / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
+
+      if (isPasting) {
+        if (event.button === 0) { // Left click
+          pasteStart = { row, col };
+          finalizePaste();
+        } else if (event.button === 2) { // Right click
+          cancelPaste();
+        }
+        return;
+      }
+
+      if (event.ctrlKey && event.button === 0) { // CTRL + Left click
+        if (!selectionStart) {
+          selectionStart = { row, col };
+        } else {
+          selectionEnd = { row, col };
+          updateGridCanvas();
+          drawSelection();
+        }
+        isDrawing = true;
+        return;
+      }
+
+      // Clear selection if clicking without CTRL
+      selectionStart = null;
+      selectionEnd = null;
+      updateGridCanvas();
+
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      
+      if (event.button === 0) { // Left click
+        if (currentPaletteColorID.toString() === "0" && currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
+          return;
+        }
+        console.log("handleCanvasMouseDown3");
+        isDrawing = true;
+        saveStateForUndo();
+        applyColorToRow(matrix, row, col, currentPaletteColorID.toString());
+      } else if (event.button === 2 && !(currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard")) { // Right click
+        isErasing = true;
+        saveStateForUndo();
+        matrix.find(m => m.PosY === row && m.PosX === col).Value = 0;
+      }
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord,currentChildRecord);
+      updatePreviewImage();
+    }
+
+    function handleCanvasMouseMove(event) {
+      if (!isDrawing && !isErasing && !isPasting) return;
+
+      const canvas = document.getElementById('gridCanvas');
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const col = Math.floor(x / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
+      const row = Math.floor(y / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
+
+      if (isPasting) {
+        pasteStart = { row, col };
+        updateGridCanvas();
+        drawPastedSelection();
+        return;
+      }
+
+      if (event.ctrlKey && isDrawing) {
+        selectionEnd = { row, col };
+        updateGridCanvas();
+        drawSelection();
+        return;
+      }
+
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+  
+      if (isDrawing) {
+        if (currentPaletteColorID.toString() === "0" && currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
+          return;
+        }
+        applyColorToRow(matrix, row, col, currentPaletteColorID.toString());
+      } else if (isErasing) {
+        matrix.find(m => m.PosY === row && m.PosX === col).Value = 0;
+      }
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord,currentChildRecord);
+      updatePreviewImage();
+    }
+
+    function handleMouseUp() {
+      isDrawing = false;
+      isErasing = false;
+
+      if (selectionStart && selectionEnd) {
+        // Handle selection area
+        const selectedCells = getSelectedCells();
+
+      }
+    }
+
+    function getSelectedCells(clearOriginalCells = false) {
+      if (!selectionStart || !selectionEnd) return [];
+
+      const startRow = Math.min(selectionStart.row, selectionEnd.row);
+      const endRow = Math.max(selectionStart.row, selectionEnd.row);
+      const startCol = Math.min(selectionStart.col, selectionEnd.col);
+      const endCol = Math.max(selectionStart.col, selectionEnd.col);
+
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      const selectedCells = [];
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+          const cell = matrix.find(m => m.PosY === row && m.PosX === col);
+          if (cell) {
+            const copiedCell = { PosX: cell.PosX, PosY: cell.PosY, Value: cell.Value };
+            selectedCells.push(copiedCell);
+            if (clearOriginalCells) {
+              cell.Value = 0;
+            }
+          }
+        }
+      }
+
+      // Send selectedCells to extension.ts
+      vscode.postMessage({ command: 'updateSelectedCells', selectedCells });
+
+      return selectedCells;
+    }
+
+    function drawSelection() {
+      if (!selectionStart || !selectionEnd || (currentRecord.Type==="Sprites" && currentRecord.Subtype==="Type 2")) return;
+
+      const canvas = document.getElementById('gridCanvas');
+      const context = canvas.getContext('2d');
+      const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1);
+
+      const startRow = Math.min(selectionStart.row, selectionEnd.row);
+      const endRow = Math.max(selectionStart.row, selectionEnd.row);
+      const startCol = Math.min(selectionStart.col, selectionEnd.col);
+      const endCol = Math.max(selectionStart.col, selectionEnd.col);
+
+      context.fillStyle = 'rgba(0, 0, 255, 0.2)';
+      context.fillRect(startCol * cellSize, startRow * cellSize, (endCol - startCol + 1) * cellSize, (endRow - startRow + 1) * cellSize);
+
+      context.strokeStyle = 'rgba(0, 0, 255, 0.5)';
+      context.lineWidth = 2;
+      context.strokeRect(startCol * cellSize, startRow * cellSize, (endCol - startCol + 1) * cellSize, (endRow - startRow + 1) * cellSize);
+    }
+
+    function drawPastedSelection() {
+      if (!pasteStart || copiedCells.length === 0) return;
+
+      const canvas = document.getElementById('gridCanvas');
+      const context = canvas.getContext('2d');
+      const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1);
+
+      copiedCells.forEach(cell => {
+        const newRow = pasteStart.row + (cell.PosY - copiedCells[0].PosY);
+        const newCol = pasteStart.col + (cell.PosX - copiedCells[0].PosX);
+        const colorObj = currentChildRecord.Values.find(p => p.id.toString() === cell.Value);
+        const color = colorObj ? colorObj.color : '#000000';
+        context.fillStyle = color === '#000000' ? 'rgba(128, 128, 128, 0.5)' : color;
+        context.fillRect(newCol * cellSize, newRow * cellSize, cellSize, cellSize);
+      });
+
+      const startRow = pasteStart.row;
+      const endRow = pasteStart.row + (copiedCells[copiedCells.length - 1].PosY - copiedCells[0].PosY);
+      const startCol = pasteStart.col;
+      const endCol = pasteStart.col + (copiedCells[copiedCells.length - 1].PosX - copiedCells[0].PosX);
+
+      context.strokeStyle = 'rgba(128, 128, 128, 0.5)';
+      context.lineWidth = 2;
+      context.strokeRect(startCol * cellSize, startRow * cellSize, (endCol - startCol + 1) * cellSize, (endRow - startRow + 1) * cellSize);
+    }
+
+    function copySelection() {
+      copiedCells = getSelectedCells();
+
+      // Clear selection after copying
+      selectionStart = null;
+      selectionEnd = null;
+      updateGridCanvas();
+      // Enable paste option
+      enablePasteOption();
+      // Close context menu
+      closeContextMenu();
+    }
+
+    function cutSelection() {
+      copiedCells = getSelectedCells(true);
+
+
+      
+      // Clear selection after cutting
+      selectionStart = null;
+      selectionEnd = null;
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      // Enable paste option
+      enablePasteOption();
+      // Close context menu
+      closeContextMenu();
+    }
+
+    function pasteSelection() {
+      closeContextMenu();
+      if (copiedCells.length === 0) return;
+
+      // Clear any existing selection
+      selectionStart = null;
+      selectionEnd = null;
+      updateGridCanvas();
+
+      isPasting = true;
+      pasteStart = { row: 0, col: 0 }; // Initialize pasteStart to the top-left corner
+      updateGridCanvas();
+      drawPastedSelection();
+    }
+
+    function finalizePaste() {
+      if (!pasteStart) return;
+
+      const startRow = pasteStart.row;
+      const startCol = pasteStart.col;
+
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+    
+      copiedCells.forEach(cell => {
+        const newRow = startRow + (cell.PosY - copiedCells[0].PosY);
+        const newCol = startCol + (cell.PosX - copiedCells[0].PosX);
+        const matrixCell = matrix.find(m => m.PosY === newRow && m.PosX === newCol);
+        if (matrixCell) {
+          matrixCell.Value = cell.Value;
+        }
+      });
+
+      isPasting = false;
+      pasteStart = null;
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+    }
+
+    function cancelPaste() {
+      closeContextMenu();
+      isPasting = false;
+      pasteStart = null;
+      updateGridCanvas();
+    }
+
+    document.getElementById('copySelection').addEventListener('click', copySelection);
+    document.getElementById('cutSelection').addEventListener('click', cutSelection);
+    document.getElementById('pasteSelection').addEventListener('click', pasteSelection);
+    document.getElementById('selectAll').addEventListener('click', selectAll);
+
+    document.addEventListener('mouseup', handleMouseUp);
+
+    document.addEventListener('keydown', (event) => {
+      if (isPasting) {
+        if (event.key === 'Enter') {
+          finalizePaste();
+        } else if (event.key === 'Escape') {
+          cancelPaste();
+        }
+      } else if (event.ctrlKey) {
+        switch (event.key) {
+          case 'c':
+          case 'C':
+            copySelection();
+            break;
+          case 'x':
+          case 'X':
+            cutSelection();
+            break;
+          case 'v':
+          case 'V':
+            pasteSelection();
+            break;
+          case 'a':
+          case 'A':
+            selectAll();
+            break;
+          case 'z':
+          case 'Z':
+            undo();
+            break;
+          case 'y':
+          case 'Y':
+            redo();
+            break;
+          case 'r':
+          case 'R':
+            rotateRight();
+            break;
+          case 'l':
+          case 'L':
+            rotateLeft();
+            break;
+        }
+      } else if (event.shiftKey) {
+        switch (event.key) {
+          case 'ArrowLeft':
+            shiftLeft();
+            break;
+          case 'ArrowRight':
+            shiftRight();
+            break;
+          case 'ArrowUp':
+            shiftUp();
+            break;
+          case 'ArrowDown':
+            shiftDown();
+            break;
+          case 'H':
+            horizontalFlip();
+            break;
+          case 'V':
+            verticalFlip();
+            break;
+          case 'C':
+            clearAll();
+            break;
+        }
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (isPasting && event.button === 2) { // Right click anywhere
+        cancelPaste();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gridCanvas');
+      canvas.addEventListener('mousedown', handleCanvasMouseDown);
+      canvas.addEventListener('mousemove', handleCanvasMouseMove);
+      canvas.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent context menu on right-click
+
+      // Set focus on the color selector to the color with ID=1
+      const initialColorSquare = document.querySelector(`.color-square[title*="ID 1"]`);
+      if (initialColorSquare) {
+        initialColorSquare.focus();
+      }
+    });
+
+    function renderOrTableGrid() {
+      const orTableGrid = document.getElementById('orTableGrid');
+      orTableGrid.innerHTML = ''; // Clear previous content
+
+      const table = document.createElement('table');
+      table.style.borderCollapse = 'collapse';
+
+      const paletteValues = currentChildRecord.Values;
+
+      // Create header row
+      const headerRow = document.createElement('tr');
+      const emptyHeaderCell = document.createElement('th');
+      emptyHeaderCell.classList.add('header-cell');
+      emptyHeaderCell.style.backgroundColor = 'transparent';
+      emptyHeaderCell.style.color = '#000000';
+      emptyHeaderCell.style.border = '3px solid #000000'; // Thicker black border
+      emptyHeaderCell.style.fontWeight = 'bold'; // Bold text
+      emptyHeaderCell.style.fontSize = '20px'; // Even larger font size
+      headerRow.appendChild(emptyHeaderCell);
+
+      // Add an empty cell to shift the column headers
+      const emptyShiftCell = document.createElement('th');
+      emptyShiftCell.classList.add('header-cell');
+      emptyShiftCell.style.backgroundColor = 'transparent';
+      emptyShiftCell.style.border = 'none';
+      headerRow.appendChild(emptyShiftCell);
+
+      for (let i = 0; i < 16; i++) {
+        const headerCell = document.createElement('th');
+        headerCell.classList.add('col-header');
+        headerCell.textContent = i.toString(16).toUpperCase();
+        const colorObj = paletteValues.find(p => p.id === i.toString(16).toUpperCase());
+        const color = colorObj ? colorObj.color : '#000000';
+        if (color === '#000000') {
+          headerCell.style.background = 'repeating-linear-gradient(45deg, #ccc 0, #ccc 5px, #fff 5px, #fff 10px)';
+          headerCell.style.color = '#444';
+        } else {
+          headerCell.style.backgroundColor = color;
+          headerCell.style.color = computeBrightness(color) < 128 ? '#FFFFFF' : '#000000';
+        }
+        headerCell.style.border = '3px solid #000000'; // Thicker black border
+        headerCell.style.fontWeight = 'bold'; // Bold text
+        headerCell.style.fontSize = '20px'; // Even larger font size
+        headerRow.appendChild(headerCell);
+      }
+      table.appendChild(headerRow);
+
+      // Add spacing row
+      const spacingRow = document.createElement('tr');
+      const spacingCell = document.createElement('td');
+      spacingCell.classList.add('header-spacing');
+      spacingRow.appendChild(spacingCell);
+
+      for (let i = 0; i < 16; i++) {
+        const spacingCell = document.createElement('td');
+        spacingCell.classList.add('header-spacing');
+        spacingRow.appendChild(spacingCell);
+      }
+      table.appendChild(spacingRow);
+
+      // Create table rows
+      for (let row = 0; row < 16; row++) {
+        const tableRow = document.createElement('tr');
+
+        const rowHeaderCell = document.createElement('th');
+        rowHeaderCell.classList.add('row-header');
+        rowHeaderCell.textContent = row.toString(16).toUpperCase();
+        const colorObj = paletteValues.find(p => p.id === row.toString(16).toUpperCase());
+        const color = colorObj ? colorObj.color : '#000000';
+        if (color === '#000000') {
+          rowHeaderCell.style.background = 'repeating-linear-gradient(45deg, #ccc 0, #ccc 5px, #fff 5px, #fff 10px)';
+          rowHeaderCell.style.color = '#444';
+        } else {
+          rowHeaderCell.style.backgroundColor = color;
+          rowHeaderCell.style.color = computeBrightness(color) < 128 ? '#FFFFFF' : '#000000';
+        }
+        rowHeaderCell.style.border = '3px solid #000000'; // Thicker black border
+        rowHeaderCell.style.fontWeight = 'bold'; // Bold text
+        rowHeaderCell.style.fontSize = '20px'; // Even larger font size
+        tableRow.appendChild(rowHeaderCell);
+
+        // Add spacing cell
+        const rowSpacingCell = document.createElement('td');
+        rowSpacingCell.classList.add('row-header-spacing');
+        tableRow.appendChild(rowSpacingCell);
+
+        for (let col = 0; col < 16; col++) {
+          const cell = document.createElement('td');
+          const value = orTable[row.toString(16).toUpperCase()][col.toString(16).toUpperCase()];
+          const colorObj = paletteValues.find(p => p.id === value);
+          const color = colorObj ? colorObj.color : '#000000';
+          const isDark = computeBrightness(color) < 128;
+
+          if (color === '#000000') {
+            cell.style.background = 'repeating-linear-gradient(45deg, #ccc 0, #ccc 5px, #fff 5px, #fff 10px)';
+            cell.style.color = '#000000';
+            cell.style.position = 'relative';
+            const innerSquare = document.createElement('div');
+            innerSquare.style.backgroundColor = '#FFFFFF';
+            innerSquare.style.width = '50%';
+            innerSquare.style.height = '50%';
+            innerSquare.style.position = 'absolute';
+            innerSquare.style.top = '25%';
+            innerSquare.style.left = '25%';
+            cell.appendChild(innerSquare);
+          } else {
+            cell.style.backgroundColor = color;
+            cell.style.color = isDark ? '#FFFFFF' : '#000000';
+          }
+
+          cell.style.border = '1px solid #000000';
+          cell.style.width = '24px';
+          cell.style.height = '24px';
+          cell.style.textAlign = 'center';
+          cell.style.cursor = 'pointer';
+          cell.style.fontWeight = 'bold'; // Bold text
+          cell.style.fontSize = '20px'; // Even larger font size
+          cell.textContent = value;
+
+          cell.addEventListener('click', () => {
+            highlightOrTableCell(row, col, value, color, isDark);
+          });
+
+          tableRow.appendChild(cell);
+        }
+
+        table.appendChild(tableRow);
+      }
+
+      orTableGrid.appendChild(table);
+    }
+
+    function highlightOrTableCell(row, col, value, color, isDark) {
+      // Redraw the entire grid
+      renderOrTableGrid();
+
+      const orTableGrid = document.getElementById('orTableGrid');
+      const cells = orTableGrid.querySelectorAll('td');
+      const colHeaders = orTableGrid.querySelectorAll('.col-header');
+      const rowHeaders = orTableGrid.querySelectorAll('.row-header');
+
+      // Calculate the correct cell index considering the offset
+      const cellIndex = (row + 1) * 17 + (col + 1);
+
+      // Highlight selected cell
+      const selectedCell = cells[cellIndex];
+      const cellColor = selectedCell.style.backgroundColor;
+      const borderColor = (cellColor === 'rgb(204, 204, 204)' || cellColor === 'rgb(255, 255, 255)') ? '#000000' : (computeBrightness(cellColor) > 200 ? '#000000' : '#FFFFFF');
+      selectedCell.style.outline = `4px solid ${borderColor}`;
+      selectedCell.style.fontWeight = 'bold';
+      selectedCell.style.fontSize = '20px';
+
+      // Highlight corresponding headers
+      const rowHeader = rowHeaders[row];
+      const colHeader = colHeaders[col];
+      rowHeader.style.outline = `4px solid #FFFFFF`; // Always white for headers
+      rowHeader.style.fontWeight = 'bold';
+      rowHeader.style.fontSize = '20px'; // Even larger font size
+      colHeader.style.outline = `4px solid #FFFFFF`; // Always white for headers
+      colHeader.style.fontWeight = 'bold';
+      colHeader.style.fontSize = '20px'; // Even larger font size
+    }
+
+    function createImagesViewer(id, enableDrag = true, enableRename = true) {
+      const type = id === 'imagesList2' ? 'patterns' : currentRecord.Type.toLowerCase();
+      return `
+        <div class="images-viewer" id="${id}">
+          <div class="images-grid" ${enableDrag ? 'ondrop="drop(event)" ondragover="allowDrop(event)"' : ''} style="background-color: black; ${!enableDrag ? 'cursor: default;' : ''}"></div>
+          <div class="images-buttons">
+            <div class="color-square" id="${id}-color" onclick="openColorPicker('${id}')" title="Click here to change ${type} background color"></div>
+            <input type="text" class="image-id" id="${id}-id" readonly style="width: 30px; margin: 0 5px;">
+            <input type="text" class="image-description" id="${id}-description" ${enableRename ? '' : 'readonly'} style="flex: 1; margin: 0 5px;" oninput="updateDescription('${id}')">
+            <div class="right-buttons">
+              <button onclick="removeImage('${id}')">Remove</button>
+              <button onclick="addImage('${id}')">Add</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function addImage(gridId) {
+      const imageList = gridId === 'imagesList1' ? objectsList : patternsList;
+      if (gridId === 'imagesList1') {
+        const highestId = Math.max(...imageList.map(img => parseInt(img.ID)), 0);
+        const newId = highestId + 1;
+        const newDescription = `${currentRecord.Type.slice(0, -1)} #${newId}`;
+        const [width, height] = currentRecord.Size.split('x').map(Number);
+
+        var newMatrices = [];
+        newMatrices.push({ ID: 1, Values: InitObjectMatrices(currentRecord.Size), OrOptions: initOrOptions(currentRecord.Size) });
+        currentRecord.Values.push({
+          ID: newId,
+          Order: imageList.length + 1,
+          Name: newDescription,
+          Matrices: newMatrices
+        });
+
+        imageList.push({
+          ID: newId,
+          Description: newDescription,
+          Image: getImageFromObject(newId, currentRecord, currentChildRecord),
+          Order: imageList.length + 1
+        });
+        renderImages(gridId, imageList);
+
+        
+
+        // Set currentObjectID to the new image ID and update focus
+        currentObjectID = newId;
+        const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${currentObjectID}"]`);
+        if (focusedElement) {
+          document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+          focusedElement.classList.add('focused');
+          focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // For Type 2, set focus in Tab 2 to image with ID 1 and update canvas grid
+        if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+          currentMatrixID = 1;
+          updateTab2Grid();
+        }
+
+        updateGridCanvas();
+      } else if (gridId === 'imagesList2' && currentObjectID !== -1) {
+        const objectRecord = currentRecord.Values.find(o => o.ID === currentObjectID);
+        if (objectRecord) {
+          const highestMatrixId = Math.max(...objectRecord.Matrices.map(matrix => matrix.ID), 0);
+          const newMatrixId = highestMatrixId + 1;
+          objectRecord.Matrices.push({ ID: newMatrixId, Values: InitObjectMatrices(currentRecord.Size), OrOptions: initOrOptions(currentRecord.Size) });
+
+          const images = objectRecord.Matrices.map(matrix => {
+            const imgSrc = getImageFromObject(currentObjectID, currentRecord, currentChildRecord, matrix.ID);
+            return {
+              ID: matrix.ID,
+              Description: `Pattern #${matrix.ID}`,
+              Image: imgSrc,
+              Order: matrix.ID
+            };
+          });
+
+          renderImages('imagesList2', images);
+
+          // Set currentMatrixID to the new image ID and update focus
+          currentMatrixID = newMatrixId;
+          const focusedElement = document.querySelector(`#imagesList2 .image-container[title^="${currentMatrixID}"]`);
+          if (focusedElement) {
+            document.querySelectorAll('#imagesList2 .image-container').forEach(container => container.classList.remove('focused'));
+            focusedElement.classList.add('focused');
+            focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
+          updateGridCanvas();
+        }
+      }
+    }
+    function InitObjectMatrices(size) {
+      const [width, height] = size.split('x').map(Number);
+      var initValue =currentRecord.Type==="Tiles" && currentRecord.Subtype==="Standard"?'1': '0';
+      const values = [];
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          values.push({ PosX: x, PosY: y, Value: initValue });
+        }
+      }
+      return values;
+    }
+
+    function initOrOptions(size) {
+      const [width, height] = size.split('x').map(Number);
+      const options = [];
+      for (let y = 0; y < height; y++) {
+        options.push({ Row: y, Status: false });
+      }
+      return options;
+    }
+    function updateDescription(gridId) {
+      const descriptionTextbox = document.getElementById(`${gridId}-description`);
+      const idTextbox = document.getElementById(`${gridId}-id`);
+      if (descriptionTextbox && idTextbox) {
+        const id = idTextbox.value;
+        const newDescription = descriptionTextbox.value;
+        const imageContainer = document.querySelector(`.image-container[title^="${id}"]`);
+        if (imageContainer) {
+          imageContainer.title = `${id} - ${newDescription}`;
+          const imageList = gridId === 'imagesList1' ? objectsList : patternsList;
+          const image = imageList.find(img => img.ID === id);
+          if (image) {
+            image.Description = newDescription;
+          }
+
+          // Update the corresponding pattern in the Values of currentRecord
+          const pattern = currentRecord.Values.find(v => v.ID.toString() === id.toString());
+          if (pattern) {
+            pattern.Name = newDescription;
+          }
+        }
+      }
+    }
+
+    function renderImages(id, images) {
+      const imagesGrid = document.querySelector(`#${id} .images-grid`);
+      const removeButton = document.querySelector(`#${id} .images-buttons .right-buttons button:nth-child(1)`);
+      if (!imagesGrid) return; // Ensure the element exists
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      const zoomLevel = id === 'imagesList1' ? currentRecord.EditingSettings.ObjectsGridZoom : currentRecord.EditingSettings.PatternsGridZoom;
+      const imageWidth = width * zoomLevel || 16;
+      const imageHeight = height * zoomLevel || 16;
+
+      images.sort((a, b) => a.Order - b.Order);
+
+      const backgroundColor = getBackgroundColor(id);
+      const borderColor = getContrastingColor(backgroundColor);
+
+      imagesGrid.innerHTML = images.map((image, index) => `
+        <div class="image-container ${id === 'imagesList2' ? 'no-drag' : ''}" id="image-${id}-${image.ID}" title="${image.ID} - ${image.Description}" style="width: ${imageWidth + 3}px; height: ${imageHeight + 3}px; background-color: ${backgroundColor}; border-color: ${borderColor};" draggable="${id === 'imagesList1'}" ondragstart="drag(event)" ondragover="allowDrop(event)" ondrop="drop(event)" onclick="focusImage(event, '${id}')">
+          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};">
+        </div>
+      `).join('');
+
+      // Show the remove button only if there are at least two images
+      if (removeButton) {
+        removeButton.style.display = images.length >= 2 ? 'inline-block' : 'none';
+        removeButton.onclick = () => openConfirmDialog(() => removeImage(id));
+      }
+      if(id === 'imagesList1'){
+        if(currentObjectID === -1){
+          currentObjectID=currentRecord.Values[0].ID;
+        }
+        const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${currentObjectID}"]`);
+        if (focusedElement) {
+          document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+          focusedElement.classList.add('focused');
+        }
+      }
+      if(id === 'imagesList2'){
+        if(currentMatrixID === -1){
+          currentMatrixID=1;
+        }
+        const focusedElement = document.querySelector(`#imagesList2 .image-container[title^="${currentMatrixID}"]`);
+        if (focusedElement) {
+          document.querySelectorAll('#imagesList2 .image-container').forEach(container => container.classList.remove('focused'));
+          focusedElement.classList.add('focused');
+        }
+      }
+      
+    }
+
+    function getBackgroundColor(gridId) {
+      if (currentRecord.EditingSettings) {
+        if (gridId === 'imagesList1' && currentRecord.EditingSettings.ObjectsGridBackgroundColor) {
+          return currentRecord.EditingSettings.ObjectsGridBackgroundColor;
+        } else if (gridId === 'imagesList2' && currentRecord.EditingSettings.PatternGridBackgroundColor) {
+          return currentRecord.EditingSettings.PatternGridBackgroundColor;
+        }
+      }
+      return 'white'; // Default background color
+    }
+
+    function removeImage(gridId) {
+      const imageList = gridId === 'imagesList1' ? objectsList : patternsList;
+      const focusedId = focusedElementIds[gridId];
+      const index = imageList.findIndex(img => img.ID == focusedId);
+      if (index !== -1) {
+        imageList.splice(index, 1);
+        currentRecord.Values = currentRecord.Values.filter(val => val.ID != focusedId);
+        renderImages(gridId, imageList);
+        // Set focus to the first image in the top-left
+        if (imageList.length > 0) {
+          focusImage({ currentTarget: document.querySelector(`#${gridId} .image-container`) }, gridId);
+        }
+      }
+    }
+
+    function openConfirmDialog(onConfirm) {
+      const overlay = document.getElementById("confirmOverlay");
+      const okBtn = document.getElementById("confirmOk");
+      const cancelBtn = document.getElementById("confirmCancel");
+
+      overlay.style.display = "flex";
+
+      let onOk = () => {
+        closeConfirm();
+        onConfirm();
+      };
+      let onCancel = () => {
+        closeConfirm();
+      };
+      function closeConfirm() {
+        overlay.style.display = "none";
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+      }
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    }
+
+    function zoomImages(delta, gridId) {
+      if (!currentRecord.EditingSettings) {
+        currentRecord.EditingSettings = {};
+      }
+
+      const zoomIncrement = 0.05; // Smaller increment for more gradual zoom
+
+      if (gridId === 'imagesList1') {
+        currentRecord.EditingSettings.ObjectsGridZoom += delta * zoomIncrement;
+        if (currentRecord.EditingSettings.ObjectsGridZoom < 0.1) {
+          currentRecord.EditingSettings.ObjectsGridZoom = 0.1;
+        }
+        renderImages('imagesList1', objectsList);
+      } else if (gridId === 'imagesList2') {
+        currentRecord.EditingSettings.PatternsGridZoom += delta * zoomIncrement;
+        if (currentRecord.EditingSettings.PatternsGridZoom < 0.1) {
+          currentRecord.EditingSettings.PatternsGridZoom = 0.1;
+        }
+        updateTab2Grid();
+      } else if (gridId === 'gridCanvas') {
+
+        currentRecord.EditingSettings.GridEditorZoom += (delta > 0 ? 1 : -1) * zoomIncrement;
+        if (currentRecord.EditingSettings.GridEditorZoom < 1.5) {
+          currentRecord.EditingSettings.GridEditorZoom = 1.5;
+        }
+        updateGridCanvas();
+      }
+    }
+
+    document.addEventListener('wheel', (event) => {
+      if (event.ctrlKey) {
+        const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+        const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridEditorContainer = document.getElementById('gridContainer');
+        if (event.target.closest(`#${gridId}`) || event.target.closest(`#${activeTab.id}`) || event.target === gridCanvas || event.target.closest(`#gridContainer`)) {
+          event.preventDefault();
+          const targetGridId = (event.target === gridCanvas || event.target.closest(`#gridContainer`)) ? 'gridCanvas' : gridId;
+          zoomImages(event.deltaY * -1, targetGridId);
+          updatePreviewImage();
+        }
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey) {
+        const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+        const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridEditorContainer = document.getElementById('gridContainer');
+        if (event.target.closest(`#${gridId}`) || event.target.closest(`#${activeTab.id}`) || event.target === gridCanvas || event.target.closest(`#gridContainer`)) {
+          event.preventDefault();
+          const targetGridId = (event.target === gridCanvas || event.target.closest(`#gridContainer`)) ? 'gridCanvas' : gridId;
+          if (event.key === '+' || event.key === '=' || event.key === 'Add') {
+            zoomImages(1, targetGridId);
+          } else if (event.key === '-' || event.key === 'Subtract') {
+            zoomImages(-1, targetGridId);
+          }
+        }
+      }
+    });
+
+    function allowDrop(event) {
+      event.preventDefault();
+    }
+
+    function drag(event) {
+      const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+      const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+      if(gridId==="imagesList2"){
+        return;
+      }
+      draggedElement = event.target.closest('.image-container');
+      draggedElementParent = draggedElement ? draggedElement.parentNode : null;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData("text/plain", draggedElement.id);
+    }
+
+    function dragOver(event) {
+      event.preventDefault();
+    }
+
+    function drop(event) {
+      event.preventDefault();
+      const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+      const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+      if(gridId==="imagesList2"){
+        return;
+      }
+      const targetElement = event.target.closest('.image-container');
+      if (targetElement && draggedElement && draggedElementParent) {
+        const targetParent = targetElement.parentNode;
+        const draggedIndex = Array.from(draggedElementParent.children).indexOf(draggedElement);
+        const targetIndex = Array.from(targetParent.children).indexOf(targetElement);
+
+        if (draggedIndex < targetIndex) {
+          targetParent.insertBefore(draggedElement, targetElement.nextSibling);
+        } else {
+          targetParent.insertBefore(draggedElement, targetElement);
+        }
+
+        updateOrder(targetParent);
+      }
+      draggedElement = null;
+    }
+
+    function updateOrder(parent) {
+      const children = Array.from(parent.children).filter(child => child.classList.contains('image-container'));
+      const parentId = parent.closest('.images-viewer').id;
+      children.forEach((child, index) => {
+        const id = child.id.split('-')[2];
+        const imageList = parentId === 'imagesList1' ? objectsList : patternsList;
+        const image = imageList.find(img => img.ID == id);
+        if (image) {
+          image.Order = index + 1;
+        }
+      });
+
+      // Update the order in currentRecord.Values if it's the grid in Tab1
+      if (parentId === 'imagesList1') {
+        currentRecord.Values.forEach((value) => {
+          const image = objectsList.find(img => img.ID == value.ID);
+          if (image) {
+            value.Order = image.Order;
+          }
+        });
+      }
+
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+    }
+
+    function focusImage(event, gridId) {
+      const imageContainers = document.querySelectorAll('.image-container');
+      imageContainers.forEach(container => container.classList.remove('focused'));
+      const clickedContainer = event.currentTarget;
+      //clickedContainer.classList.add('focused');
+      //focusedElementIds[gridId] = clickedContainer.title.split(' - ')[0];
+      triggerFocusEvent(clickedContainer.title.split(' - ')[0]);
+
+      if (gridId === 'imagesList1') {
+        currentObjectID = parseInt(clickedContainer.title.split(' - ')[0]);
+        currentMatrixID = 1;
+      } else if (gridId === 'imagesList2') {
+        currentMatrixID = parseInt(clickedContainer.title.split(' - ')[0]);
+      }
+
+      // Update the tooltip textboxes with the focused image's ID and Description
+      const descriptionTextbox = document.getElementById(`${gridId}-description`);
+      const idTextbox = document.getElementById(`${gridId}-id`);
+      if (descriptionTextbox && idTextbox) {
+        const [id, description] = clickedContainer.title.split(' - ');
+        descriptionTextbox.value = description;
+        idTextbox.value = id;
+      }
+
+      
+     
+
+    
+
+     
+      const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${currentObjectID}"]`);
+      if (focusedElement) {
+        document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+        focusedElement.classList.add('focused');
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      updateTab2Grid();
+      updateGridCanvas();
+      updatePreviewImage();
+      updatePreviewImageInfo();
+    }
+
+ 
+
+    function triggerFocusEvent(imageId) {
+      const event = new CustomEvent('focusedImageChanged', { detail: { imageId } });
+      document.dispatchEvent(event);
+    }
+
+    
+
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey) {
+        if (event.key === '+' || event.key === '=' || event.key === 'Add') {
+          event.preventDefault();
+          zoomImages(0.1, 'imagesList1');
+        } else if (event.key === '-' || event.key === 'Subtract') {
+          event.preventDefault();
+          zoomImages(-0.1, 'imagesList1');
+        }
+      }
+    });
+
+    var objectsList = [];
+
+    var patternsList = [];
+
+    function openTab(evt, tabName) {
+      var i, tabcontent, tablinks;
+      tabcontent = document.getElementsByClassName("tabcontent");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      tablinks = document.getElementsByClassName("tablinks");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+        tablinks[i].style.fontWeight = '';
+        tablinks[i].style.textDecoration = '';
+        tablinks[i].style.fontSize = '14px';
+        tablinks[i].style.backgroundColor = '#000000';
+        tablinks[i].style.color = '#FFFFFF';
+      }
+      document.getElementById(tabName).style.display = "block";
+      evt.currentTarget.className += " active";
+      evt.currentTarget.style.fontWeight = 'bold';
+      evt.currentTarget.style.textDecoration = 'underline';
+      evt.currentTarget.style.fontSize = '16px';
+    }
+
+    const splitter = document.getElementById('splitter');
+    let isDragging = false;
+
+    splitter.addEventListener('mousedown', () => {
+      isDragging = true;
+      document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const container = document.getElementById('editingArea');
+      const leftPanel = document.getElementById('leftPanel');
+      const rightPanel = document.getElementById('rightPanel');
+      const containerRect = container.getBoundingClientRect();
+      const newLeftWidth = e.clientX - containerRect.left;
+      leftPanel.style.width = `${newLeftWidth}px`;
+      rightPanel.style.width = `calc(100% - ${newLeftWidth}px - 5px)`; // Adjust right panel width
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      document.body.style.cursor = 'default';
+    });
+
+    const horizontalSplitter = document.getElementById('horizontalSplitter');
+    let isHorizontalDragging = false;
+
+    horizontalSplitter.addEventListener('mousedown', () => {
+      isHorizontalDragging = true;
+      document.body.style.cursor = 'row-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isHorizontalDragging) return;
+      const leftPanel = document.getElementById('leftPanel');
+      const previewPanel = document.getElementById('previewPanel');
+      const selectionPanel = document.getElementById('selectionPanel');
+      const leftPanelRect = leftPanel.getBoundingClientRect();
+      const newPreviewHeight = e.clientY - leftPanelRect.top;
+      previewPanel.style.height = `${newPreviewHeight}px`;
+      selectionPanel.style.height = `calc(100% - ${newPreviewHeight}px - 5px)`; // Adjust selection panel height
+      renderOrTableGrid(); // Redraw the grid when selectionPanel is resized
+    });
+
+    document.addEventListener('mouseup', () => {
+      isHorizontalDragging = false;
+      document.body.style.cursor = 'default';
+    });
+
+    document.getElementById('detailsOkButton').addEventListener('click', () => {
+      
+      
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'ok' });
+    });
+
+    document.getElementById('detailsCancelButton').addEventListener('click', () => {
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'cancel' });
+    });
+
+
+    
+
+    function openColorPicker(gridId) {
+      const overlay = document.getElementById("colorPickerOverlay");
+      const colorInput = document.getElementById("colorPickerInput");
+      const okBtn = document.getElementById("colorPickerOk");
+      const cancelBtn = document.getElementById("colorPickerCancel");
+      const colorSquare = document.getElementById(`${gridId}-color`);
+      const currentColor = colorSquare ? colorSquare.style.backgroundColor : '#ffffff';
+
+      overlay.style.display = "flex";
+      colorInput.value = rgbToHex(currentColor);
+
+      function onOk() {
+        const newColor = colorInput.value;
+        document.querySelectorAll(`#${gridId} .image-container`).forEach(container => {
+          container.style.backgroundColor = newColor;
+        });
+        if (colorSquare) {
+          colorSquare.style.backgroundColor = newColor;
+        }
+        if (!currentRecord.EditingSettings) {
+          currentRecord.EditingSettings = {};
+        }
+        if (gridId === 'imagesList1') {
+          currentRecord.EditingSettings.ObjectsGridBackgroundColor = newColor;
+          applyPreviewBackgroundColor(); // Update imageCanvas background color
+        } else if (gridId === 'imagesList2') {
+          currentRecord.EditingSettings.PatternGridBackgroundColor = newColor;
+        }
+        closeColorPickerOverlay();
+        focusOnColorSquare(gridId);
+      }
+
+      function onCancel() {
+        closeColorPickerOverlay();
+      }
+
+      function closeColorPickerOverlay() {
+        overlay.style.display = "none";
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+      }
+
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    }
+
+    function focusOnColorSquare(gridId) {
+      const colorSquare = document.getElementById(`${gridId}-color`);
+      if (colorSquare) {
+        colorSquare.focus();
+      }
+    }
+
+    function createColorGrid(container, paletteColors) {
+      if (!container) return; // Ensure the container exists
+
+      const triplets = [
+        [1, 2, 3], [1, 4, 5], [1, 6, 7], [1, 8, 9], [1, 10, 11], [1, 12, 13], [1, 14, 15],
+        [2, 4, 6], [2, 5, 7], [2, 8, 10], [2, 9, 11], [2, 12, 14], [2, 13, 15],
+        [3, 4, 7], [3, 5, 7], [3, 6, 7], [3, 8, 11], [3, 9, 11], [3, 10, 11], [3, 12, 15],
+        [3, 13, 15], [3, 14, 15], [4, 8, 12], [4, 9, 13], [4, 10, 14], [4, 11, 15],
+        [5, 6, 7], [5, 8, 13], [5, 9, 13], [5, 10, 15], [5, 11, 15], [5, 12, 13], [5, 14, 15],
+        [6, 8, 14], [6, 9, 15], [6, 10, 14], [6, 11, 15], [6, 12, 14], [6, 13, 15],
+        [7, 8, 15], [7, 9, 15], [7, 10, 15], [7, 11, 15], [7, 12, 15], [7, 13, 15], [7, 14, 15],
+        [9, 10, 11], [9, 12, 13], [9, 14, 15], [10, 12, 14], [10, 13, 15], [11, 12, 15],
+        [11, 13, 15], [11, 14, 15], [13, 14, 15]
+      ];
+
+      const containerWidth =document.getElementById("selectionPanel").clientWidth-150;
+      const tripletWidth = 150; // Adjusted width to fit the triplets
+      const columns = Math.max(Math.floor(containerWidth / (tripletWidth+18)), 1); // Ensure at least 1 column
+    
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+
+      let row;
+      triplets.forEach((triplet, index) => {
+        if (index % columns === 0) {
+          row = table.insertRow();
+        }
+        const cell = row.insertCell();
+        cell.style.border = '1px solid #ccc';
+        cell.style.padding = '20px';
+        cell.style.textAlign = 'center';
+        cell.style.cursor = 'pointer';
+        cell.style.margin = '10px'; // Add at least 10 pixels of space between triplets
+
+        cell.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center;">
+            <div style="width: 30px; height: 30px; background-color: ${paletteColors[triplet[0]]}; color: ${getContrastingColor(paletteColors[triplet[0]])}; border: 1px solid white; display: flex; justify-content: center; align-items: center; font-size: 14px;">${triplet[0].toString(16).toUpperCase()}</div>
+            <span style="margin: 0 5px; font-size: 18px;">+</span>
+            <div style="width: 30px; height: 30px; background-color: ${paletteColors[triplet[1]]}; color: ${getContrastingColor(paletteColors[triplet[1]])}; border: 1px solid white; display: flex; justify-content: center; align-items: center; font-size: 14px;">${triplet[1].toString(16).toUpperCase()}</div>
+            <span style="margin: 0 5px; font-size: 18px;">=</span>
+            <div style="width: 30px; height: 30px; background-color: ${paletteColors[triplet[2]]}; color: ${getContrastingColor(paletteColors[triplet[2]])}; border: 1px solid white; display: flex; justify-content: center; align-items: center; font-size: 14px;">${triplet[2].toString(16).toUpperCase()}</div>
+          </div>
+        `;
+
+        cell.addEventListener('click', () => {
+          document.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
+          cell.classList.add('focused');
+        });
+      });
+
+      container.innerHTML = ''; // Clear previous content
+      container.appendChild(table);
+    }
+
+    async function updateTab2Grid() {
+      const imagesList2 = document.getElementById('imagesList2');
+      if (!imagesList2) return; // Ensure the element exists
+
+      const imagesGrid = imagesList2.querySelector('.images-grid');
+      imagesGrid.innerHTML = ''; // Clear existing content
+
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        const objectRecord = currentRecord; // Assuming currentRecord is the objectRecord
+        const paletteRecord = currentChildRecord; // Assuming currentChildRecord is the paletteRecord
+
+        const pattern = objectRecord.Values.find(o => o.ID === currentObjectID);
+        if (pattern) {
+          const images = pattern.Matrices.map(matrix => {
+            const imgSrc = getImageFromObject(currentObjectID, objectRecord, paletteRecord, matrix.ID);
+            return {
+              ID: matrix.ID,
+              Description: `Pattern #${matrix.ID}`,
+              Image: imgSrc,
+              Order: matrix.ID
+            };
+          });
+
+          renderImages('imagesList2', images);
+
+          // Set focus to the element with ID equal to currentMatrixID
+          const focusedElement = document.querySelector(`#imagesList2 .image-container[title^="${currentMatrixID}"]`);
+          if (focusedElement) {
+            focusedElement.classList.add('focused');
+            focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+
+
+        }
+      }
+
+      // Update the grid canvas
+      updateGridCanvas();
+    }
+
+   
+
+    function renderColorSelector(colors) {
+      const colorSelector = document.getElementById('colorSelector');
+      colorSelector.innerHTML = ''; // Clear previous content
+
+      colors.forEach(colorObj => {
+        const colorDiv = document.createElement('span');
+        colorDiv.className = 'color-square';
+        colorDiv.style.backgroundColor = colorObj.color;
+        colorDiv.title = `ID ${colorObj.id} => ${colorObj.color}`;
+
+        if (colorObj.color === '#000000') {
+          colorDiv.classList.add('checkerboard');
+          colorDiv.style.cursor = 'default';
+        }
+
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = colorObj.id;
+        const isDark = computeBrightness(colorObj.color) < 128;
+        labelSpan.style.color = isDark ? '#fff' : '#000';
+        if (colorObj.color === '#000000') {
+          labelSpan.style.color = '#444';
+        }
+        colorDiv.appendChild(labelSpan);
+
+        if (colorObj.id === currentPaletteColorID) {
+          colorDiv.classList.add('active');
+        }
+
+        colorDiv.addEventListener('click', () => {
+          document.querySelectorAll('.color-square').forEach(el => el.classList.remove('active'));
+          colorDiv.classList.add('active');
+          currentPaletteColorID = colorObj.id;
+          updateCanvasGridColor();
+          updateGridCanvas(); // Redraw the canvas grid when the color is changed
+        });
+
+        colorSelector.appendChild(colorDiv);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const initialColorSquare = document.querySelector(`.color-square[title*="ID ${currentPaletteColorID}"]`);
+      if (initialColorSquare) {
+        initialColorSquare.classList.add('active');
+      }
+    });
+
+    function updateCanvasGridColor() {
+      const canvas = document.getElementById('gridCanvas');
+      const context = canvas.getContext('2d');
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1); // Size of each cell with zoom
+
+      // Create checkerboard pattern proportional to zoom level
+      const checkerboardCanvas = document.createElement('canvas');
+      const checkerSize = Math.max(8 * (currentRecord.EditingSettings.GridEditorZoom || 1), 1);
+      checkerboardCanvas.width = checkerSize;
+      checkerboardCanvas.height = checkerSize;
+      const checkerboardContext = checkerboardCanvas.getContext('2d');
+      checkerboardContext.fillStyle = '#ccc';
+      checkerboardContext.fillRect(0, 0, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillRect(checkerSize / 2, checkerSize / 2, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillStyle = '#fff';
+      checkerboardContext.fillRect(checkerSize / 2, 0, checkerSize / 2, checkerSize / 2);
+      checkerboardContext.fillRect(0, checkerSize / 2, checkerSize / 2, checkerSize / 2);
+      const checkerboardPattern = context.createPattern(checkerboardCanvas, 'repeat');
+
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      matrix.forEach(cell => {
+        const colorObj = currentChildRecord.Values.find(p => p.id.toString() === cell.Value);
+        const color = colorObj ? colorObj.color : '#000000';
+        if (color === '#000000') {
+          context.fillStyle = checkerboardPattern;
+        } else {
+          context.fillStyle = color;
+        }
+        context.fillRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
+        context.strokeStyle = '#fff';
+        context.strokeRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
+      });
+    }
+
+    async function updatePreviewImage() {
+      const img = document.getElementById('imageCanvas');
+      const imageSrc = getImageFromObject(currentObjectID, currentRecord, currentChildRecord);
+      img.src = imageSrc;
+      applyPreviewZoom();
+      applyPreviewBackgroundColor();
+    }
+
+    function applyPreviewZoom() {
+      const img = document.getElementById('imageCanvas');
+      const zoomLevel = currentRecord.EditingSettings.PreviewZoom || 1;
+      img.style.transform = `scale(${zoomLevel})`;
+    }
+
+    function applyPreviewBackgroundColor() {
+      const img = document.getElementById('imageCanvas');
+      const backgroundColor = currentRecord.EditingSettings.ObjectsGridBackgroundColor || 'white';
+      img.style.backgroundColor = backgroundColor;
+    }
+
+    document.addEventListener('wheel', (event) => {
+      if (event.ctrlKey) {
+        const img = document.getElementById('imageCanvas');
+        if (event.target === img || event.target.closest('#previewImageCanvas')) {
+          event.preventDefault();
+          const delta = event.deltaY * -0.01;
+          if (!currentRecord.EditingSettings.PreviewZoom) {
+            currentRecord.EditingSettings.PreviewZoom = 1;
+          }
+          currentRecord.EditingSettings.PreviewZoom += delta;
+          if (currentRecord.EditingSettings.PreviewZoom < 0.1) {
+            currentRecord.EditingSettings.PreviewZoom = 0.1;
+          }
+          applyPreviewZoom();
+        }
+      }
+    });
+
+    function updatePreviewImageInfo() {
+      const descriptionTextbox = document.getElementById('imagesList1-description');
+      const previewImageInfo = document.getElementById('previewImageInfo');
+      if (descriptionTextbox && previewImageInfo) {
+        previewImageInfo.textContent = descriptionTextbox.value;
+      }
+    }
+
+    function toggleGridVisibility() {
+      const showGrid = document.getElementById('toggleGrid').checked;
+      currentRecord.EditingSettings.ShowGrid = showGrid;
+      updateGridCanvas();
+    }
+
+    function toggleBlockSeparatorVisibility() {
+      const showSeparator = document.getElementById('toggleBlockSeparator').checked;
+      currentRecord.EditingSettings.ShowBlockSeparator = showSeparator;
+      updateGridCanvas();
+    }
+
+    function applyColorToRow(matrix, row, col, colorID) {
+      if (colorID === 0 && currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
+        return; // Prevent using color with ID 0
+      }
+      
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        
+        if (currentChildRecord.Values.find(p => p.id.toString() === colorID.toString()).color !== '#000000') {
+          
+          matrix.forEach(cell => {
+      
+            if (cell.PosY === row && (cell.PosX === col || cell.Value.toString() !== '0')) {
+              cell.Value = colorID;
+            }
+          });
+        }
+      } else if (currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
+        const existingColors = new Set(matrix.map(cell => cell.Value).filter(value => value !== "0"));
+        if (existingColors.size >= 2 && !existingColors.has(colorID)) {
+          const clickedCellColor = matrix.find(m => m.PosY === row && m.PosX === col).Value;
+          matrix.forEach(cell => {
+            if (cell.Value === clickedCellColor) {
+              cell.Value = colorID;
+            }
+          });
+        } else {
+          matrix.find(m => m.PosY === row && m.PosX === col).Value = colorID;
+        }
+      } else {
+        matrix.find(m => m.PosY === row && m.PosX === col).Value = colorID;
+      }
+    }
+
+    function toggleOrOption(row) {
+      const matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID);
+
+      if (matrix.OrOptions) {
+        matrix.OrOptions.find(o=>o.Row==row).Status = !matrix.OrOptions.find(o=>o.Row==row).Status
+      }
+   
+      updateGridCanvas();
+      
+      renderImages('imagesList1', objectsList);
+      //updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+    }
+
+    function redrawOptionsCanvas() {
+      
+      const rowOrOptionsCanvas = document.getElementById('rowOrOptionsCanvas');
+      const rowOrOptionsContext = rowOrOptionsCanvas.getContext('2d');
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      const cellSize = 20 * (currentRecord.EditingSettings.GridEditorZoom || 1); // Size of each cell with zoom
+      rowOrOptionsCanvas.width = cellSize;
+      rowOrOptionsCanvas.height = height * cellSize;
+
+      for (let row = 0; row < height; row++) {
+
+        const orOption = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID).OrOptions.find(o=>o.Row==row).Status;
+ 
+        rowOrOptionsContext.fillStyle =  '#000000';
+        rowOrOptionsContext.fillRect(1, row * cellSize+1, cellSize, cellSize-2);
+         rowOrOptionsContext.fillStyle = orOption ? '#00FF00' : '#000000';
+        rowOrOptionsContext.fillRect(8, row * cellSize+8, cellSize-16, cellSize-16);
+        rowOrOptionsContext.strokeStyle = '#fff';
+        rowOrOptionsContext.strokeRect(0, row * cellSize, cellSize, cellSize);
+
+
+
+        
+      }
+    }
+
+    function openContextMenu(event) {
+      if (event.ctrlKey && event.button === 2) { // Check if CTRL is pressed and right mouse button is clicked
+        event.preventDefault();
+        const contextMenu = document.getElementById('contextMenu');
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = `${event.clientX}px`;
+        contextMenu.style.top = `${event.clientY}px`;
+
+        // Disable "Copy", "Cut", "Paste", "Select All", "Rotate Right", "Rotate Left", "Shift Left", "Shift Right", "Shift Up", "Shift Down", and "Vertical Flip" options if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        const copyOption = document.getElementById('copySelection');
+        const cutOption = document.getElementById('cutSelection');
+        const pasteOption = document.getElementById('pasteSelection');
+        const selectAllOption = document.getElementById('selectAll');
+        const rotateRightOption = document.getElementById('rotateRight');
+        const rotateLeftOption = document.getElementById('rotateLeft');
+        const shiftLeftOption = document.getElementById('shiftLeft');
+        const shiftRightOption = document.getElementById('shiftRight');
+        const shiftUpOption = document.getElementById('shiftUp');
+        const shiftDownOption = document.getElementById('shiftDown');
+        const verticalFlipOption = document.getElementById('verticalFlip');
+        const hasSelection = selectionStart && selectionEnd;
+        const [width, height] = currentRecord.Size.split('x').map(Number);
+
+        if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+          copyOption.style.color = 'gray';
+          cutOption.style.color = 'gray';
+          pasteOption.style.color = 'gray';
+          selectAllOption.style.color = 'gray';
+          rotateRightOption.style.color = 'gray';
+          rotateLeftOption.style.color = 'gray';
+          shiftLeftOption.style.color = 'gray';
+          shiftRightOption.style.color = 'gray';
+          shiftUpOption.style.color = 'gray';
+          shiftDownOption.style.color = 'gray';
+          verticalFlipOption.style.color = 'gray';
+          copyOption.style.pointerEvents = 'none';
+          cutOption.style.pointerEvents = 'none';
+          pasteOption.style.pointerEvents = 'none';
+          selectAllOption.style.pointerEvents = 'none';
+          rotateRightOption.style.pointerEvents = 'none';
+          rotateLeftOption.style.pointerEvents = 'none';
+          shiftLeftOption.style.pointerEvents = 'none';
+          shiftRightOption.style.pointerEvents = 'none';
+          shiftUpOption.style.pointerEvents = 'none';
+          shiftDownOption.style.pointerEvents = 'none';
+          verticalFlipOption.style.pointerEvents = 'none';
+        } else {
+          copyOption.style.color = hasSelection ? 'black' : 'gray';
+          cutOption.style.color = hasSelection ? 'black' : 'gray';
+          pasteOption.style.color = copiedCells.length > 0 ? 'black' : 'gray';
+          selectAllOption.style.color = 'black';
+          rotateRightOption.style.color = 'black';
+          rotateLeftOption.style.color = 'black';
+          shiftLeftOption.style.color = 'black';
+          shiftRightOption.style.color = 'black';
+          shiftUpOption.style.color = 'black';
+          shiftDownOption.style.color = 'black';
+          verticalFlipOption.style.color = 'black';
+          copyOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
+          cutOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
+          pasteOption.style.pointerEvents = copiedCells.length > 0 ? 'auto' : 'none';
+          selectAllOption.style.pointerEvents = 'auto';
+          if (width != height) {
+            rotateRightOption.style.color = 'gray';
+            rotateLeftOption.style.color = 'gray';
+            rotateRightOption.style.pointerEvents = 'none';
+            rotateLeftOption.style.pointerEvents = 'none';
+          } else {
+            rotateRightOption.style.color = 'black';
+            rotateLeftOption.style.color = 'black';
+            rotateRightOption.style.pointerEvents = 'auto';
+            rotateLeftOption.style.pointerEvents = 'auto';
+          }
+        }
+
+        // Close the context menu when clicking outside
+        document.addEventListener('click', closeContextMenu);
+      }
+    }
+
+    function closeContextMenu(event) {
+      const contextMenu = document.getElementById('contextMenu');
+      if (!event || !contextMenu.contains(event.target)) {
+        contextMenu.style.display = 'none';
+        document.removeEventListener('click', closeContextMenu);
+      }
+    }
+
+    function enablePasteOption() {
+      const pasteOption = document.getElementById('pasteSelection');
+      pasteOption.style.color = 'black';
+      pasteOption.style.pointerEvents = 'auto';
+    }
+
+    document.getElementById('contextMenu').addEventListener('click', (event) => {
+      if (event.target.tagName === 'LI') {
+        // Handle the menu item click event here
+       
+        closeContextMenu(event);
+      }
+    });
+
+    document.getElementById('gridCanvas').addEventListener('contextmenu', openContextMenu);
+    document.getElementById('gridContainer').addEventListener('contextmenu', openContextMenu);
+
+    function selectAll() {
+      const canvas = document.getElementById('gridCanvas');
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      selectionStart = { row: 0, col: 0 };
+      selectionEnd = { row: height - 1, col: width - 1 };
+      updateGridCanvas();
+      drawSelection();
+      closeContextMenu();
+    }
+
+    function saveStateForUndo() {
+      const currentState = JSON.stringify(currentRecord.Values);
+      undoStack.push(currentState);
+      redoStack = []; // Clear redo stack
+    }
+
+    function undo() {
+      if (undoStack.length > 0) {
+        const previousState = undoStack.pop();
+        redoStack.push(JSON.stringify(currentRecord.Values));
+        currentRecord.Values = JSON.parse(previousState);
+        updateGridCanvas();
+        renderImages('imagesList1', objectsList);
+        updateTab2Grid();
+        updateTab1Grid(currentRecord, currentChildRecord);
+        updatePreviewImage();
+        closeContextMenu();
+      }
+    }
+
+    function redo() {
+      if (redoStack.length > 0) {
+        const nextState = redoStack.pop();
+        undoStack.push(JSON.stringify(currentRecord.Values));
+        currentRecord.Values = JSON.parse(nextState);
+        updateGridCanvas();
+        renderImages('imagesList1', objectsList);
+        updateTab2Grid();
+        updateTab1Grid(currentRecord, currentChildRecord);
+        updatePreviewImage();
+        closeContextMenu();
+      }
+    }
+
+    function rotateRight() {
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+      if(width != height) return;
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") return;
+ 
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      const newMatrix = [];
+
+      for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+          const cell = matrix.find(m => m.PosY === row && m.PosX === col);
+          if (cell) {
+            newMatrix.push({ PosX: height - 1 - row, PosY: col, Value: cell.Value });
+          }
+        }
+      }
+
+      matrix.length = 0;
+      newMatrix.forEach(cell => matrix.push(cell));
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function rotateLeft() {
+            const [width, height] = currentRecord.Size.split('x').map(Number);
+      if(width != height) return;
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") return;
+
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      const newMatrix = [];
+
+      for (let row = 0; row < height; row++) {
+        for (let col = 0; col < width; col++) {
+          const cell = matrix.find(m => m.PosY === row && m.PosX === col);
+          if (cell) {
+            newMatrix.push({ PosX: row, PosY: width - 1 - col, Value: cell.Value });
+          }
+        }
+      }
+
+      matrix.length = 0;
+      newMatrix.forEach(cell => matrix.push(cell));
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function shiftLeft() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      // Shift all cells to the left
+      matrix.forEach(cell => {
+        if (cell.PosX > 0) {
+          cell.PosX -= 1;
+        } else {
+          cell.Value = "0";
+          cell.PosX = width - 1;
+        }
+      });
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function shiftRight() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      matrix.forEach(cell => {
+        if (cell.PosX < width) {
+          cell.PosX += 1;
+        }  
+      });
+
+      // Add new column with ID 0
+      for (let row = 0; row < height; row++) {
+        const existingCell = matrix.find(cell => cell.PosX === 0 && cell.PosY === row);
+        if (existingCell) {
+          existingCell.Value = 0;
+        } else {
+          matrix.push({ PosX: 0, PosY: row, Value: 0 });
+        }
+      }
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function shiftUp() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        const orOptions = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID).OrOptions;
+        if (orOptions) {
+          for (let row = 0; row < height-1; row++) {
+            
+              orOptions.find(o=>o.Row===row).Status = orOptions.find(o=>o.Row===row+1).Status
+            
+          }
+          orOptions.find(o=>o.Row===height-1).Status=false;
+        }
+      }
+
+      matrix.forEach(cell => {
+        if (cell.PosY > 0) {
+          cell.PosY -= 1;
+        } else {
+          cell.Value = "0";
+          cell.PosY = height - 1;
+        }
+      });
+
+      // Add new row with ID 0
+      for (let col = 0; col < width; col++) {
+        const existingCell = matrix.find(cell => cell.PosX === col && cell.PosY === height - 1);
+        if (existingCell) {
+          existingCell.Value = "0";
+        } else {
+          matrix.push({ PosX: col, PosY: height - 1, Value: "0" });
+        }
+      }
+
+     
+     
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function shiftDown() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        const orOptions = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID).OrOptions;
+        if (orOptions) {
+          for (let row = height - 1; row > 0; row--) {
+            orOptions.find(o=>o.Row===row).Status = orOptions.find(o=>o.Row===row-1).Status;
+          }
+          orOptions.find(o=>o.Row===0).Status=false;
+        }
+      }
+
+      matrix.forEach(cell => {
+        if (cell.PosY < height - 1) {
+          cell.PosY += 1;
+        } else {
+          cell.Value = "0";
+          cell.PosY = 0;
+        }
+      });
+
+      // Add new row with ID 0
+      for (let col = 0; col < width; col++) {
+        const existingCell = matrix.find(cell => cell.PosX === col && cell.PosY === 0);
+        if (existingCell) {
+          existingCell.Value = "0";
+        } else {
+          matrix.push({ PosX: col, PosY: 0, Value: "0" });
+        }
+      }
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function verticalFlip() {
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") return;
+
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      matrix.forEach(cell => {
+        cell.PosY = height - 1 - cell.PosY;
+      });
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function horizontalFlip() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      matrix.forEach(cell => {
+        cell.PosX = width - 1 - cell.PosX;
+      });
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    function clearAll() {
+      saveStateForUndo();
+      let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
+
+      matrix.forEach(cell => {
+        cell.Value = "0";
+      });
+
+      if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+        const orOptions = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === currentMatrixID).OrOptions;
+        if (orOptions) {
+          orOptions.forEach(option => {
+            option.Status = false;
+          });
+        }
+      }
+
+      updateGridCanvas();
+      renderImages('imagesList1', objectsList);
+      updateTab2Grid();
+      updateTab1Grid(currentRecord, currentChildRecord);
+      updatePreviewImage();
+      closeContextMenu();
+    }
+
+    document.getElementById('undoAction').addEventListener('click', undo);
+    document.getElementById('redoAction').addEventListener('click', redo);
+    document.getElementById('rotateRight').addEventListener('click', rotateRight);
+    document.getElementById('rotateLeft').addEventListener('click', rotateLeft);
+    document.getElementById('shiftLeft').addEventListener('click', shiftLeft);
+    document.getElementById('shiftRight').addEventListener('click', shiftRight);
+    document.getElementById('shiftUp').addEventListener('click', shiftUp);
+    document.getElementById('shiftDown').addEventListener('click', shiftDown);
+    document.getElementById('verticalFlip').addEventListener('click', verticalFlip);
+    document.getElementById('horizontalFlip').addEventListener('click', horizontalFlip);
+    document.getElementById('clearAll').addEventListener('click', clearAll);
+
+    function openContextMenu(event) {
+      if (event.ctrlKey && event.button === 2) { // Check if CTRL is pressed and right mouse button is clicked
+        event.preventDefault();
+        const contextMenu = document.getElementById('contextMenu');
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = `${event.clientX}px`;
+        contextMenu.style.top = `${event.clientY}px`;
+
+        // Disable "Copy", "Cut", "Paste", "Select All", "Rotate Right", "Rotate Left", "Shift Left", "Shift Right", "Shift Up", "Shift Down", and "Vertical Flip" options if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        const copyOption = document.getElementById('copySelection');
+        const cutOption = document.getElementById('cutSelection');
+        const pasteOption = document.getElementById('pasteSelection');
+        const selectAllOption = document.getElementById('selectAll');
+        const rotateRightOption = document.getElementById('rotateRight');
+        const rotateLeftOption = document.getElementById('rotateLeft');
+        const shiftLeftOption = document.getElementById('shiftLeft');
+        const shiftRightOption = document.getElementById('shiftRight');
+        const shiftUpOption = document.getElementById('shiftUp');
+        const shiftDownOption = document.getElementById('shiftDown');
+        const verticalFlipOption = document.getElementById('verticalFlip');
+        const hasSelection = selectionStart && selectionEnd;
+        const [width, height] = currentRecord.Size.split('x').map(Number);
+
+        if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+          copyOption.style.color = 'gray';
+          cutOption.style.color = 'gray';
+          pasteOption.style.color = 'gray';
+          selectAllOption.style.color = 'gray';
+          rotateRightOption.style.color = 'gray';
+          rotateLeftOption.style.color = 'gray';
+          shiftLeftOption.style.color = 'gray';
+          shiftRightOption.style.color = 'gray';
+          shiftUpOption.style.color = 'gray';
+          shiftDownOption.style.color = 'gray';
+          verticalFlipOption.style.color = 'gray';
+          copyOption.style.pointerEvents = 'none';
+          cutOption.style.pointerEvents = 'none';
+          pasteOption.style.pointerEvents = 'none';
+          selectAllOption.style.pointerEvents = 'none';
+          rotateRightOption.style.pointerEvents = 'none';
+          rotateLeftOption.style.pointerEvents = 'none';
+          shiftLeftOption.style.pointerEvents = 'none';
+          shiftRightOption.style.pointerEvents = 'none';
+          shiftUpOption.style.pointerEvents = 'none';
+          shiftDownOption.style.pointerEvents = 'none';
+          verticalFlipOption.style.pointerEvents = 'none';
+        } else {
+          copyOption.style.color = hasSelection ? 'black' : 'gray';
+          cutOption.style.color = hasSelection ? 'black' : 'gray';
+          pasteOption.style.color = copiedCells.length > 0 ? 'black' : 'gray';
+          selectAllOption.style.color = 'black';
+          rotateRightOption.style.color = 'black';
+          rotateLeftOption.style.color = 'black';
+          shiftLeftOption.style.color = 'black';
+          shiftRightOption.style.color = 'black';
+          shiftUpOption.style.color = 'black';
+          shiftDownOption.style.color = 'black';
+          verticalFlipOption.style.color = 'black';
+          copyOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
+          cutOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
+          pasteOption.style.pointerEvents = copiedCells.length > 0 ? 'auto' : 'none';
+          selectAllOption.style.pointerEvents = 'auto';
+          if (width != height) {
+            rotateRightOption.style.color = 'gray';
+            rotateLeftOption.style.color = 'gray';
+            rotateRightOption.style.pointerEvents = 'none';
+            rotateLeftOption.style.pointerEvents = 'none';
+          } else {
+            rotateRightOption.style.color = 'black';
+            rotateLeftOption.style.color = 'black';
+            rotateRightOption.style.pointerEvents = 'auto';
+            rotateLeftOption.style.pointerEvents = 'auto';
+          }
+        }
+
+        // Close the context menu when clicking outside
+        document.addEventListener('click', closeContextMenu);
+      }
+    }
+
+    document.getElementById('gridCanvas').addEventListener('contextmenu', openContextMenu);
+    document.getElementById('gridContainer').addEventListener('contextmenu', openContextMenu);
+
+    // ...existing code...
+  </script>
+</body>
+</html>
