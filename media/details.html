@@ -1,9 +1,33 @@
+<!--
+
+/**
+ * MSXDev Tool Extension for VS Code
+ * Copyright (C) 2025  Fausto Pracek
+ *
+ * This file is part of MSXDev Tool Extension for VS Code.
+ *
+ * MSXDev Tool Extension for VS Code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+-->
+ 
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MSX Sprite Grid Editor</title>
+  <title>MSX Dev Tool</title>
   <style>
     .grid-container {
       font-family: Arial, sans-serif;
@@ -17,7 +41,7 @@
       display: flex;
       border-bottom: 1px solid #ccc;
       width: 100%;
-      justify-content: flex-start; /* Giustifica a sinistra */
+      justify-content: flex-start; /* Justify to the left */
     }
 
     .tab {
@@ -25,14 +49,14 @@
       cursor: pointer;
       border-bottom: none;
       margin-bottom: -1px;
-      color: black; /* Testo nero */
+      color: black; /* Black text */
     }
 
     .tab.active {
       background-color: #fff;
       border-bottom: 1px solid #fff;
-      font-weight: bold; /* Grassetto */
-      font-size: 1.1em; /* Font leggermente più grande */
+      font-weight: bold; /* Bold */
+      font-size: 1.1em; /* Slightly larger font */
     }
 
     .tab-content {
@@ -58,7 +82,7 @@
       display: flex;
       gap: 5px;
       margin-top: 10px;
-      margin-bottom: 20px; /* Aggiunge spazio tra la palette e la griglia */
+      margin-bottom: 20px; /* Adds space between the palette and the grid */
     }
 
     .color {
@@ -76,7 +100,7 @@
 
     .color.selected {
       font-weight: bold;
-      border: 2px solid white; /* Linea bianca di 2 pixel */
+      border: 2px solid white; /* 2px white line */
       box-shadow: 0 0 0 1px black inset;
     }
 
@@ -87,7 +111,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: black; /* Font nero */
+      color: black; /* Black font */
     }
 
     .grid-container {
@@ -100,7 +124,7 @@
 
     canvas {
       background-color: #fff;
-      cursor: default; /* Cambia il cursore a freccetta */
+      cursor: default; /* Change cursor to arrow */
       display: block;
       border: 1px solid white; /* Add white border */
     }
@@ -135,11 +159,11 @@
     }
 
     .selected-cell {
-      background-color: rgba(128, 128, 128, 0.5); /* Grigio trasparente */
+      background-color: rgba(128, 128, 128, 0.5); /* Transparent gray */
     }
 
     #contextMenu {
-      pointer-events: auto; /* Garantisce che i click sugli elementi siano recepiti */
+      pointer-events: auto; /* Ensures clicks on items are received */
     }
 
     .error {
@@ -177,9 +201,9 @@
       padding: 0;
       height: 100vh;
       overflow: hidden; /* Prevent scrollbars on the body */
-      user-select: none; /* Previene la selezione del testo */
-      -webkit-user-select: none; /* Previene la selezione del testo */
-      user-select: none; /* Previene la selezione del testo */
+      user-select: none; /* Prevent text selection */
+      -webkit-user-select: none; /* Prevent text selection */
+      user-select: none; /* Prevent text selection */
     }
     .details-view {
       display: flex;
@@ -431,12 +455,17 @@
     .grid-editor-container {
       height: calc(100% - 60px); /* Adjust height to fill remaining space */
       padding-left: 10px; /* Add padding to move the grid canvas to the right */
+      position: relative; /* Add position relative to contain the label */
     }
     .checkbox-container {
       display: flex;
       align-items: center;
       gap: 10px;
       margin-top: 10px;
+      justify-content: space-between; /* Add this line to space out the elements */
+    }
+    .context-menu-info-label {
+      margin-left: auto; /* Add this line to push the label to the right */
     }
     .color-selector {
       display: flex;
@@ -490,9 +519,17 @@
     .canvas-container {
       display: flex;
       align-items: center;
+      position: relative; /* Add position relative to contain the label */
     }
     .canvas-container canvas {
       border: 1px solid #000;
+    }
+
+    .canvas-container canvas:overlap + .canvas-label {
+      display: none;
+    }
+    .grid-editor-container canvas {
+      border: 2px solid white; /* Add this line to set a 2-pixel white border */
     }
   </style>
 </head>
@@ -515,7 +552,7 @@
           <div class="vertical-panel" id="selectionPanel" style="overflow-y: hidden;"></div>
         </div>
         <div class="splitter" id="splitter"></div>
-        <div class="panel" id="rightPanel">
+        <div class="panel" style="overflow: hidden;" id="rightPanel">
           
           <div class="color-selector" id="colorSelector"></div>
           <div class="grid-editor-container" class="grid-container" id="gridContainer">
@@ -524,6 +561,7 @@
               <canvas id="gridCanvas"></canvas>
               <canvas id="rowColorCanvas"></canvas>
             </div>
+            
           </div>
         </div>
       </div>
@@ -550,6 +588,8 @@
   </div>
   <div id="contextMenu" style="display:none; position:absolute; background:white; border:1px solid #ccc; z-index:1000;">
     <ul style="list-style:none; padding:5px; margin:0;">
+      <li id="penFill" style="padding:5px; cursor:pointer;">Fill</li>
+      <hr id="penfill" style="margin: 5px 0;">
       <li id="undoAction" style="padding:5px; cursor:pointer;">Undo (Ctrl+Z)</li>
       <li id="redoAction" style="padding:5px; cursor:pointer;">Redo (Ctrl+Y)</li>
       <hr style="margin: 5px 0;">
@@ -578,13 +618,14 @@
     const vscode = acquireVsCodeApi();
     let currentRecord = null;
     let currentChildRecord = null;
+    let currentDataStore=[];
     let draggedElement = null;
     let placeholder = null;
     let focusedElementIds = { imagesList1: null, imagesList2: null };
     let draggedElementParent = null;
     let currentObjectID = -1;
     let currentMatrixID = -1;
-    let currentPaletteColorID = 0;
+    let currentPaletteColorID = 1;
     let isDrawing = false;
     let isErasing = false;
 
@@ -597,11 +638,13 @@
     let undoStack = [];
     let redoStack = [];
 
+    let isFillMode = false;
+
     window.addEventListener('message', event => {
       const message = event.data;
       switch (message.command) {
         case 'loadDetails':
-          loadDetails(message.record, message.childRecord, message.bufferedCopiedCells);
+          loadDetails(message.record, message.childRecord, message.bufferedCopiedCells, message.dataStore);
           break;
       }
     });
@@ -610,7 +653,8 @@
       vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'unload' });
     });
 
-    function loadDetails(record, childRecord, bufferedCopiedCells) {
+    function loadDetails(record, childRecord, bufferedCopiedCells, dataStore) {
+      currentDataStore = dataStore;
       copiedCells = bufferedCopiedCells || [];
       currentRecord = record;
       currentChildRecord = childRecord;
@@ -757,11 +801,11 @@
       renderColorSelector(childRecord.Values);
       // Explicitly set the color with ID=1 as active
       setTimeout(() => {
-        const initialColorSquare = document.querySelector(`.color-square[title*="ID 0"]`);
+        const initialColorSquare = document.getElementById("firstColorItem");
         if (initialColorSquare) {
           initialColorSquare.classList.add('active');
           initialColorSquare.focus();
-          currentPaletteColorID = 0;
+          currentPaletteColorID = 1;
           updateCanvasGridColor();
           toggleBlockSeparatorVisibility();
           toggleBlockSeparatorVisibility();
@@ -774,6 +818,7 @@
       checkboxContainer.innerHTML = `
         <label><input type="checkbox" id="toggleGrid"> Show Grid</label>
         <label id="toggleBlockSeparatorContainer"><input type="checkbox" id="toggleBlockSeparator"> Show 8x8 Block Separator</label>
+         <label class="context-menu-info-label">CTRL+LeftMouse click on object canvas for to display context menu</label>
       `;
       rightPanel.insertBefore(checkboxContainer, rightPanel.firstChild);
 
@@ -851,7 +896,7 @@
         }
         context.fillRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
         if (currentRecord.EditingSettings.ShowGrid) {
-          context.strokeStyle = '#fff';
+          context.strokeStyle = '#000000';
           context.strokeRect(cell.PosX * cellSize, cell.PosY * cellSize, cellSize, cellSize);
         }
       });
@@ -893,11 +938,11 @@
         // Draw RowColor
         for (let row = 0; row < height; row++) {
           const rowColor = getRowColor(matrix, row);
-          console.log("PIPPO_1",row,rowColor);
+       
           if (rowColor === '#000000') {
             rowColorContext.fillStyle = checkerboardPattern;
           } else {
-            console.log("PIPPO_2",row,rowColor);
+           
             rowColorContext.fillStyle = rowColor;
           }
           rowColorContext.fillRect(0, row * cellSize, cellSize, cellSize);
@@ -939,7 +984,6 @@
       rowCells.forEach(cell => {
 
         if (cell.Value.toString() !== '0') {
-         // console.log("PIPPO",row,currentChildRecord.Values.find(p => p.id.toString() === cell.Value.toString()).color);
           color= currentChildRecord.Values.find(p => p.id.toString() === cell.Value.toString()).color;
         }
       });
@@ -996,10 +1040,14 @@
         if (currentPaletteColorID.toString() === "0" && currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
           return;
         }
-        console.log("handleCanvasMouseDown3");
         isDrawing = true;
         saveStateForUndo();
-        applyColorToRow(matrix, row, col, currentPaletteColorID.toString());
+        if (isFillMode) {
+          const targetColor = matrix.find(m => m.PosY === row && m.PosX === col).Value;
+          fill(matrix, row, col, targetColor, currentPaletteColorID.toString());
+        } else {
+          applyColorToRow(matrix, row, col, currentPaletteColorID.toString());
+        }
       } else if (event.button === 2 && !(currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard")) { // Right click
         isErasing = true;
         saveStateForUndo();
@@ -1011,6 +1059,24 @@
       updateTab2Grid();
       updateTab1Grid(currentRecord,currentChildRecord);
       updatePreviewImage();
+    }
+
+    function fill(matrix, row, col, targetColor, newColor) {
+      if (targetColor === newColor) return;
+      const stack = [{ row, col }];
+      const [width, height] = currentRecord.Size.split('x').map(Number);
+
+      while (stack.length > 0) {
+        const { row, col } = stack.pop();
+        const cell = matrix.find(m => m.PosY === row && m.PosX === col);
+        if (cell && cell.Value === targetColor) {
+          cell.Value = newColor;
+          if (row > 0) stack.push({ row: row - 1, col });
+          if (row < height - 1) stack.push({ row: row + 1, col });
+          if (col > 0) stack.push({ row, col: col - 1 });
+          if (col < width - 1) stack.push({ row, col: col + 1 });
+        }
+      }
     }
 
     function handleCanvasMouseMove(event) {
@@ -1081,7 +1147,7 @@
         for (let col = startCol; col <= endCol; col++) {
           const cell = matrix.find(m => m.PosY === row && m.PosX === col);
           if (cell) {
-            const copiedCell = { PosX: cell.PosX, PosY: cell.PosY, Value: cell.Value };
+            const copiedCell = { PosX: cell.PosX, PosY: cell.PosY, Value: cell.Value.toString() };
             selectedCells.push(copiedCell);
             if (clearOriginalCells) {
               cell.Value = 0;
@@ -1310,11 +1376,7 @@
       canvas.addEventListener('mousemove', handleCanvasMouseMove);
       canvas.addEventListener('contextmenu', (event) => event.preventDefault()); // Prevent context menu on right-click
 
-      // Set focus on the color selector to the color with ID=1
-      const initialColorSquare = document.querySelector(`.color-square[title*="ID 1"]`);
-      if (initialColorSquare) {
-        initialColorSquare.focus();
-      }
+     
     });
 
     function renderOrTableGrid() {
@@ -1491,7 +1553,7 @@
             <input type="text" class="image-description" id="${id}-description" ${enableRename ? '' : 'readonly'} style="flex: 1; margin: 0 5px;" oninput="updateDescription('${id}')">
             <div class="right-buttons">
               <button onclick="removeImage('${id}')">Remove</button>
-              <button onclick="addImage('${id}')">Add</button>
+              <button onclick="addImage('${id}')">New</button>
             </div>
           </div>
         </div>
@@ -1637,7 +1699,6 @@
         </div>
       `).join('');
 
-      // Show the remove button only if there are at least two images
       if (removeButton) {
         removeButton.style.display = images.length >= 2 ? 'inline-block' : 'none';
         removeButton.onclick = () => openConfirmDialog(() => removeImage(id));
@@ -1653,6 +1714,7 @@
         }
       }
       if(id === 'imagesList2'){
+      
         if(currentMatrixID === -1){
           currentMatrixID=1;
         }
@@ -1677,9 +1739,80 @@
     }
 
     function removeImage(gridId) {
-      const imageList = gridId === 'imagesList1' ? objectsList : patternsList;
-      const focusedId = focusedElementIds[gridId];
-      const index = imageList.findIndex(img => img.ID == focusedId);
+      const imageList = gridId === 'imagesList1' ? objectsList : currentRecord.Values.find(o => o.ID === currentObjectID).Matrices;
+      const focusedId =gridId === 'imagesList1'? currentObjectID:currentMatrixID;
+      const index = imageList.findIndex(img => img.ID === focusedId);
+      if (gridId === 'imagesList1' && currentRecord.Type === "Tiles") {
+        const animationRecord = currentDataStore.find(record => 
+          record.Type === "Animations" && 
+          record.ChildObjectType === "Tiles" && 
+          record.ChildObjectID === currentRecord.ID && 
+          record.Values.some(value => value.Objects.some(obj => obj.ObjectID === focusedId))
+        );
+
+        if (animationRecord) {
+          const overlay = document.getElementById("confirmOverlay");
+          const dialog = document.getElementById("confirmDialog");
+          dialog.innerHTML = `
+            <p>Unable to remove selected item because used by ${animationRecord.ID} - ${animationRecord.Description} animations set</p>
+            <button id="confirmOk">OK</button>
+          `;
+          overlay.style.display = "flex";
+          document.getElementById("confirmOk").addEventListener("click", () => {
+            overlay.style.display = "none";
+          });
+          return;
+        }
+      }
+
+      if (gridId === 'imagesList1' && currentRecord.Type === "Tiles") {
+        const mapRecord = currentDataStore.find(record => 
+          record.Type === "Maps" && 
+          record.ChildObjectType === "Tiles" && 
+          record.ChildObjectID === currentRecord.ID && 
+          record.Values.some(value => value.Map.some(m => m.TileID === focusedId))
+        );
+
+        if (mapRecord) {
+          const overlay = document.getElementById("confirmOverlay");
+          const dialog = document.getElementById("confirmDialog");
+          dialog.innerHTML = `
+            <p>Unable to remove selected item because used by ${mapRecord.ID} - ${mapRecord.Description} maps set</p>
+            <button id="confirmOk">OK</button>
+          `;
+          overlay.style.display = "flex";
+          document.getElementById("confirmOk").addEventListener("click", () => {
+            overlay.style.display = "none";
+          });
+          return;
+        }
+      }
+
+      if (gridId === 'imagesList1' && currentRecord.Type === "Sprites") {
+        const animationRecord = currentDataStore.find(record => 
+          record.Type === "Animations" && 
+          record.ChildObjectType === "Sprites" && 
+          record.ChildObjectID === currentRecord.ID && 
+          record.Values.some(value => value.Objects.some(obj => obj.ObjectID === focusedId))
+        );
+
+        if (animationRecord) {
+          const overlay = document.getElementById("confirmOverlay");
+          const dialog = document.getElementById("confirmDialog");
+          dialog.innerHTML = `
+            <p>Unable to remove selected item because used by ${animationRecord.ID} - ${animationRecord.Description} animations set</p>
+            <button id="confirmOk">OK</button>
+          `;
+          overlay.style.display = "flex";
+          document.getElementById("confirmOk").addEventListener("click", () => {
+            overlay.style.display = "none";
+          });
+          return;
+        }
+      }
+      console.log("index",index,focusedId);
+      console.log("imageList",imageList);
+      console.log("patternsList",patternsList);
       if (index !== -1) {
         imageList.splice(index, 1);
         currentRecord.Values = currentRecord.Values.filter(val => val.ID != focusedId);
@@ -2149,6 +2282,7 @@
    
 
     function renderColorSelector(colors) {
+      var firstColorSelection=true;
       const colorSelector = document.getElementById('colorSelector');
       colorSelector.innerHTML = ''; // Clear previous content
 
@@ -2156,13 +2290,16 @@
         const colorDiv = document.createElement('span');
         colorDiv.className = 'color-square';
         colorDiv.style.backgroundColor = colorObj.color;
-        colorDiv.title = `ID ${colorObj.id} => ${colorObj.color}`;
-
+        colorDiv.title =`RGB: ${colorObj.color}\nMSX: ${rgbToMsx(colorObj.color)}`;      
         if (colorObj.color === '#000000') {
           colorDiv.classList.add('checkerboard');
           colorDiv.style.cursor = 'default';
         }
-
+        if(colorObj.color !== '#000000' && firstColorSelection){
+          firstColorSelection=false;
+          colorDiv.id="firstColorItem";
+          firstColorSelection=false;
+        }
         const labelSpan = document.createElement('span');
         labelSpan.textContent = colorObj.id;
         const isDark = computeBrightness(colorObj.color) < 128;
@@ -2189,10 +2326,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+
       const initialColorSquare = document.querySelector(`.color-square[title*="ID ${currentPaletteColorID}"]`);
       if (initialColorSquare) {
+
         initialColorSquare.classList.add('active');
       }
+
     });
 
     function updateCanvasGridColor() {
@@ -2371,7 +2511,16 @@
         contextMenu.style.left = `${event.clientX}px`;
         contextMenu.style.top = `${event.clientY}px`;
 
-        // Disable "Copy", "Cut", "Paste", "Select All", "Rotate Right", "Rotate Left", "Shift Left", "Shift Right", "Shift Up", "Shift Down", and "Vertical Flip" options if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        // Disable "PenFill" option if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        const penFillOption = document.getElementById('penFill');
+        if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+          penFillOption.style.display = 'none';
+        } else {
+          penFillOption.style.display = 'block';
+          penFillOption.textContent = isFillMode ? 'Pen' : 'Fill';
+        }
+
+        // Disable other options based on selection and type
         const copyOption = document.getElementById('copySelection');
         const cutOption = document.getElementById('cutSelection');
         const pasteOption = document.getElementById('pasteSelection');
@@ -2526,7 +2675,7 @@
         for (let col = 0; col < width; col++) {
           const cell = matrix.find(m => m.PosY === row && m.PosX === col);
           if (cell) {
-            newMatrix.push({ PosX: height - 1 - row, PosY: col, Value: cell.Value });
+            newMatrix.push({ PosX: height - 1 - row, PosY: col, Value: cell.Value.toString() });
           }
         }
       }
@@ -2556,7 +2705,7 @@
         for (let col = 0; col < width; col++) {
           const cell = matrix.find(m => m.PosY === row && m.PosX === col);
           if (cell) {
-            newMatrix.push({ PosX: row, PosY: width - 1 - col, Value: cell.Value });
+            newMatrix.push({ PosX: row, PosY: width - 1 - col, Value: cell.Value.toString() });
           }
         }
       }
@@ -2610,9 +2759,9 @@
       for (let row = 0; row < height; row++) {
         const existingCell = matrix.find(cell => cell.PosX === 0 && cell.PosY === row);
         if (existingCell) {
-          existingCell.Value = 0;
+          existingCell.Value = "0";
         } else {
-          matrix.push({ PosX: 0, PosY: row, Value: 0 });
+          matrix.push({ PosX: 0, PosY: row, Value: "0" });
         }
       }
 
@@ -2794,7 +2943,16 @@
         contextMenu.style.left = `${event.clientX}px`;
         contextMenu.style.top = `${event.clientY}px`;
 
-        // Disable "Copy", "Cut", "Paste", "Select All", "Rotate Right", "Rotate Left", "Shift Left", "Shift Right", "Shift Up", "Shift Down", and "Vertical Flip" options if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        // Disable "PenFill" option if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
+        const penFillOption = document.getElementById('penFill');
+        if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
+          penFillOption.style.display = 'none';
+        } else {
+          penFillOption.style.display = 'block';
+          penFillOption.textContent = isFillMode ? 'Pen' : 'Fill';
+        }
+
+        // Disable other options based on selection and type
         const copyOption = document.getElementById('copySelection');
         const cutOption = document.getElementById('cutSelection');
         const pasteOption = document.getElementById('pasteSelection');
@@ -2865,6 +3023,21 @@
         document.addEventListener('click', closeContextMenu);
       }
     }
+
+    function togglePenFillMode() {
+      isFillMode = !isFillMode;
+      const penFillOption = document.getElementById('penFill');
+      penFillOption.textContent = isFillMode ? 'Pen' : 'Fill';
+      closeContextMenu();
+    }
+
+    document.getElementById('penFill').addEventListener('click', togglePenFillMode);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (currentRecord.Type !== "Sprites" || currentRecord.Subtype !== "Type 2") {
+        document.getElementById('penFill').textContent = 'Fill';
+      }
+    });
 
     document.getElementById('gridCanvas').addEventListener('contextmenu', openContextMenu);
     document.getElementById('gridContainer').addEventListener('contextmenu', openContextMenu);

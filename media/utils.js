@@ -1,3 +1,45 @@
+/**
+ * MSXDev Tool Extension for VS Code
+ * Copyright (C) 2025  Fausto Pracek
+ *
+ * This file is part of MSXDev Tool Extension for VS Code.
+ *
+ * MSXDev Tool Extension for VS Code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
+ */
+function rgbToMsx(hexColor) {
+  // Removes the initial "#", if present
+  const cleanHex = hexColor.replace(/^#/, "");
+
+  // Checks that the string is 6 hexadecimal characters long
+  if (cleanHex.length !== 6) {
+    throw new Error("Invalid color format: must be #rrggbb");
+  }
+
+  // Extracts the R, G, and B components in decimal (0-255)
+  const rDec = parseInt(cleanHex.slice(0, 2), 16);
+  const gDec = parseInt(cleanHex.slice(2, 4), 16);
+  const bDec = parseInt(cleanHex.slice(4, 6), 16);
+
+  // Converts each channel from [0..255] to [0..15].
+  // Using division by 17 and rounding: 255/17 = 15
+  const r4 = Math.round(rDec / 17);
+  const g4 = Math.round(gDec / 17);
+  const b4 = Math.round(bDec / 17);
+
+  // Returns the string with the channel names
+  return `R=${r4}, G=${g4}, B=${b4}`;
+}
 function getImageFromObject(id, objectRecord, paletteRecord, onlyMatrix = -1) {
   // Deserializza l'attributo Values di paletteRecord
   const paletteValues = paletteRecord.Values;

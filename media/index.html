@@ -1,8 +1,32 @@
+<!--
+
+/**
+ * MSXDev Tool Extension for VS Code
+ * Copyright (C) 2025  Fausto Pracek
+ *
+ * This file is part of MSXDev Tool Extension for VS Code.
+ *
+ * MSXDev Tool Extension for VS Code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Object Management (Sprites, Tiles, Maps, Fonts, Palettes, Images, Animations)</title>
+  <title>MSX Dev Tool</title>
   <style>
     body {
       font-family: sans-serif;
@@ -36,7 +60,7 @@
       background-color: #f0f0f0;
       color: black; /* Change text color to black */
     }
-    /* Quadrati colore (per Palettes) */
+    /* Color squares (for Palettes) */
     .color-square {
       display: inline-flex;
       align-items: center;
@@ -204,24 +228,24 @@
 <body>
 
 <div id="mainPanel" class="panel active">
-  <!-- FILTRI -->
+  <!-- FILTERS -->
   <div id="filters">
     <label for="typeSelect">Type:</label>
     <select id="typeSelect">
-      <option value="Sprites">Sprites</option>
-      <option value="Tiles">Tiles</option>
-      <option value="Maps">Maps</option>
-      <option value="Fonts">Fonts</option>
+      <option value="Sprites">Sprites sets</option>
+      <option value="Tiles">Tiles sets</option>
+      <option value="Maps">Maps sets</option>
+      <option value="Fonts">Fonts sets</option>
       <option value="Palettes">Palettes</option>
-      <option value="Images">Images</option>
-      <option value="Animations">Animations</option>
+      <option value="Images">Images sets</option>
+      <option value="Animations">Animations sets</option>
     </select>
 
     <label for="subtypeSelect" id="subtypeLabel" class="hidden">Subtype:</label>
     <select id="subtypeSelect" class="hidden"></select>
   </div>
 
-  <!-- TABELLA DATI -->
+  <!-- DATA TABLE -->
   <table id="dataGrid">
     <thead>
       <tr id="gridHeader"></tr>
@@ -229,10 +253,10 @@
     <tbody></tbody>
   </table>
 
-  <!-- Pulsante di aggiunta -->
+  <!-- Add button -->
   <button id="addButton">New</button>
 
-  <!-- Dialog inserimento/modifica -->
+  <!-- Edit dialog -->
   <div id="editDialog" class="hidden"></div>
 </div>
 
@@ -249,7 +273,7 @@
   <!-- Overlay: confirm remove -->
   <div id="confirmOverlay" class="overlay">
     <div id="confirmDialog" class="dialog">
-      <p>Are you sure to remove this record?</p>
+      <p>Are you sure to remove this item?</p>
       <button id="confirmOk">Yes</button>
       <button id="confirmCancel">No</button>
     </div>
@@ -265,39 +289,17 @@
 
 <script src="./utils.js"></script>
 <script>
-  function rgbToMsx(hexColor) {
-  // Rimuove il "#" iniziale, se presente
-  const cleanHex = hexColor.replace(/^#/, "");
 
-  // Controlla che la stringa sia lunga 6 caratteri esadecimali
-  if (cleanHex.length !== 6) {
-    throw new Error("Formato colore non valido: deve essere #rrggbb");
-  }
-
-  // Estrae i componenti R, G e B in decimale (0-255)
-  const rDec = parseInt(cleanHex.slice(0, 2), 16);
-  const gDec = parseInt(cleanHex.slice(2, 4), 16);
-  const bDec = parseInt(cleanHex.slice(4, 6), 16);
-
-  // Converte ciascun canale da [0..255] a [0..15].
-  // Usando divisione per 17 e arrotondamento: 255/17 = 15
-  const r4 = Math.round(rDec / 17);
-  const g4 = Math.round(gDec / 17);
-  const b4 = Math.round(bDec / 17);
-
-  // Restituisce la stringa con i nomi dei canali
-  return `R=${r4}, G=${g4}, B=${b4}`;
-}
 /* ======================================================================================
-   STATO GLOBALE
+   GLOBAL STATE
    ====================================================================================== */
-let editModeActive = false; // se true => nascondiamo i pulsanti in grid
+let editModeActive = false; // if true => hide buttons in grid
 let dataStore = [];
-let tempPaletteColors = []; // Variabile globale per memorizzare i colori temporanei
+let tempPaletteColors = []; // Global variable to store temporary colors
 const vscode = acquireVsCodeApi(); // Acquire VS Code API once
 
 /* ======================================================================================
-   MOCK DATI
+   MOCK DATA
    ====================================================================================== */
 
 function loadDataStore(data) {
@@ -306,13 +308,10 @@ function loadDataStore(data) {
 }
 
 /* ======================================================================================
-   FUNZIONI DI SUPPORTO
+   SUPPORT FUNCTIONS
    ====================================================================================== */
 
 function saveDataStore() {
-  console.log("Saving dataStore...");
-
-  
   vscode.postMessage({
     command: 'saveDataStore',
     data: JSON.stringify(dataStore)
@@ -320,7 +319,7 @@ function saveDataStore() {
 }
 
 /* ======================================================================================
-   FUNZIONI DI SUPPORTO
+   SUPPORT FUNCTIONS
    ====================================================================================== */
 
 function getSubtypesForType(type) {
@@ -357,7 +356,7 @@ function getChildObjectDescription(childType, childID) {
 }
 
 /* ======================================================================================
-   GESTIONE SUBTYPE + GRID
+   SUBTYPE + GRID MANAGEMENT
    ====================================================================================== */
 function updateSubtypeCombo() {
   const type = document.getElementById("typeSelect").value;
@@ -394,7 +393,7 @@ function updateGrid() {
 }
 
 /* ======================================================================================
-   RENDER GRIGLIA
+   RENDER GRID
    ====================================================================================== */
 function renderGrid(typeFilter, subtypeFilter) {
   const tbody = document.querySelector("#dataGrid tbody");
@@ -469,7 +468,7 @@ function renderGrid(typeFilter, subtypeFilter) {
       break;
   }
 
-  // Creiamo l'header
+  // Create the header
   columns.forEach(col => {
     let th = document.createElement("th");
     th.textContent = col.label;
@@ -479,7 +478,7 @@ function renderGrid(typeFilter, subtypeFilter) {
   thAction.textContent = "Actions";
   theadRow.appendChild(thAction);
 
-  // Filtro dataStore
+  // Filter dataStore
   let filteredData = dataStore.filter(row => {
     if (row.Type !== typeFilter) return false;
     if (getSubtypesForType(typeFilter).length > 0) {
@@ -488,7 +487,7 @@ function renderGrid(typeFilter, subtypeFilter) {
     return (row.Subtype === "");
   });
 
-  // Righe
+  // Rows
   filteredData.forEach(row => {
     let tr = document.createElement("tr");
 
@@ -496,9 +495,9 @@ function renderGrid(typeFilter, subtypeFilter) {
       let td = document.createElement("td");
 
       if (col.field === "ChildObjectID") {
-        // prendi la desc dell'oggetto child
+        // get the description of the child object
         let objDesc = getChildObjectDescription(row.ChildObjectType, row.ChildObjectID);
-        // se Animations => aggiungi (S) o (T)
+        // if Animations => add (S) or (T)
         if (typeFilter === "Animations") {
           if (row.ChildObjectType === "Sprites") {
             objDesc += " (Sprite)";
@@ -509,7 +508,7 @@ function renderGrid(typeFilter, subtypeFilter) {
         td.textContent = objDesc;
       }
       else if (col.field === "Values" && typeFilter === "Palettes") {
-        // 16 quadratini
+        // 16 squares
         try {
           
           let valArr =row.Values;
@@ -545,7 +544,7 @@ function renderGrid(typeFilter, subtypeFilter) {
         td.textContent = row.Values ? row.Values.length : 0;
       }
       else if (typeFilter === "Fonts" && col.field === "FontSpaces") {
-        // Se FontSpaces è vuoto => "0x0"
+        // If FontSpaces is empty => "0x0"
         if (!row.FontSpaces) {
           td.textContent = "0x0";
         } else {
@@ -553,27 +552,27 @@ function renderGrid(typeFilter, subtypeFilter) {
         }
       }
       else {
-        // generico
+        // generic
         td.textContent = row[col.field] || "";
       }
 
       tr.appendChild(td);
     });
 
-    // Colonna "Actions"
+    // Actions column
     let tdActions = document.createElement("td");
     if (!editModeActive) {
-      // Bottone Edit
+      // Edit button
       let editBtn = document.createElement("button");
       editBtn.className = "action-button";
       editBtn.textContent = "Edit";
       editBtn.addEventListener("click", () => {
-        console.log("Clicked Edit su record:", row);
+        console.log("Clicked Edit on record:", row);
         openEditDialog(row, false);
       });
       tdActions.appendChild(editBtn);
 
-      // Bottone Remove
+      // Remove button
       let removeBtn = document.createElement("button");
       removeBtn.className = "action-button";
       removeBtn.textContent = "Remove";
@@ -581,13 +580,21 @@ function renderGrid(typeFilter, subtypeFilter) {
       if (isRef) {
         removeBtn.style.display = "none";
       }
-      // se Palettes => non rimuovere se c'è solo 1
+      // if Palettes => do not remove if there is only 1
       let totalPal = dataStore.filter(r => r.Type === "Palettes").length;
       if (row.Type === "Palettes" && totalPal <= 1) {
         removeBtn.style.display = "none";
       }
       removeBtn.addEventListener("click", () => {
-        console.log("Clicked Remove su record:", row);
+        console.log("Clicked Remove on record:", row);
+        if(row.Type === "Sprites" || row.Type === "Tiles"){
+          let dependants = getDependants(row.Type, row.ID);
+          if(dependants.length > 0){
+            openInfoDialog("You can't remove the record because it is used by \"" + dependants[0].Name + "\" " + dependants[0].Type, null);
+            return;
+          }
+          
+        }
         openConfirmDialog(() => {
           dataStore = dataStore.filter(r => !(r.Type === row.Type && r.ID === row.ID));
           saveDataStore();
@@ -596,7 +603,7 @@ function renderGrid(typeFilter, subtypeFilter) {
       });
       tdActions.appendChild(removeBtn);
 
-      // Bottone Details (tranne Palettes)
+      // Details button (except Palettes)
       if (row.Type !== "Palettes") {
         let detailsBtn = document.createElement("button");
         detailsBtn.className = "action-button details-button";
@@ -626,7 +633,7 @@ function openEditDialog(existingRow, createNew) {
   editModeActive = true;
   updateGrid();
 
-  // Disabilitiamo Type e Subtype
+  // Disable Type and Subtype
   document.getElementById("typeSelect").disabled = true;
   document.getElementById("subtypeSelect").disabled = true;
 
@@ -651,24 +658,24 @@ function openEditDialog(existingRow, createNew) {
     tempRow.LastFontChar = "";
     tempRow.FontSpaces = "";
 
-    // se Palettes => default colors
+    // if Palettes => default colors
     if (currentType === "Palettes") {
       tempRow.Values = getDefaultMSXColors(false);
       tempPaletteColors = [...tempRow.Values]; // Assign initial palette
     }
-    // se Sprites => size=8x8
+    // if Sprites => size=8x8
     if (currentType === "Sprites") {
       tempRow.Size = "8x8";
     }
-    // se Tiles e subtype=Bitmap => size=8x8
+    // if Tiles and subtype=Bitmap => size=8x8
     if (currentType === "Tiles" && currentSubtype === "Bitmap") {
       tempRow.Size = "8x8";
     }
-    // se Images => size=100x100
+    // if Images => size=100x100
     if (currentType === "Images") {
       tempRow.Size = "100x100";
     }
-    // se Fonts => size=8x8
+    // if Fonts => size=8x8
     if (currentType === "Fonts") {
       tempRow.Size = "8x8";
       tempRow.FontSpaces = "0x0";
@@ -679,7 +686,7 @@ function openEditDialog(existingRow, createNew) {
 
     
   } else {
-    // Copia shallow
+    // Shallow copy
     tempRow = { ...existingRow };
     if (currentType === "Palettes") {
       tempPaletteColors = [...tempRow.Values]; // Assign existing palette
@@ -779,7 +786,7 @@ function openEditDialog(existingRow, createNew) {
     dialog.appendChild(divWrap);
   });
 
-  // Bottoni Save/Cancel
+  // Save/Cancel buttons
   let divActions = document.createElement("div");
   divActions.className = "form-group";
   let saveBtn = document.createElement("button");
@@ -787,24 +794,24 @@ function openEditDialog(existingRow, createNew) {
   saveBtn.addEventListener("click", () => {
     console.log("Clicked SAVE; createNew=", createNew, "tempRow=", tempRow);
 
-    // Se Animations in modifica => l'utente cambia solo desc
+    // If Animations in edit mode => user can only change description
     if (currentType === "Animations" && !createNew) {
       tempRow.ChildObjectID = existingRow.ChildObjectID;
       tempRow.ChildObjectType = existingRow.ChildObjectType;
     }
 
-    // Validazione minima
+    // Minimum validation
     if (!tempRow.Description) {
       openInfoDialog("Description is required!", null);
       return;
     }
 
-    // Esempio di validazioni su Size
+    // Example of size validations
     if (!checkSizeConstraints(currentType, currentSubtype, tempRow)) {
       return;
     }
 
-    // Gestione Animations createNew => "childID_suffix"
+    // Animations createNew => "childID_suffix"
     if (currentType === "Animations" && createNew) {
       let rawVal = tempRow.ChildObjectID || "";
       let parts = rawVal.split("_");
@@ -826,7 +833,7 @@ function openEditDialog(existingRow, createNew) {
       }
     }
 
-    // Altri type => ChildObjectType in base alle regole
+    // Other types => ChildObjectType based on rules
     if (!createNew && currentType === "Animations") {
       // do nothing
     } else if (["Sprites","Tiles","Fonts","Images"].includes(currentType)) {
@@ -835,7 +842,7 @@ function openEditDialog(existingRow, createNew) {
       tempRow.ChildObjectType = "Tiles";
     }
 
-    // Validazione campi obbligatori
+    // Required fields validation
     let requiredFields = getRequiredFieldsForType(currentType);
     for (let field of requiredFields) {
       if (tempRow[field] === undefined || tempRow[field] === null || tempRow[field] === "") {
@@ -844,7 +851,7 @@ function openEditDialog(existingRow, createNew) {
       }
     }
 
-    // Salvataggio
+    // Save
     if (createNew) {
       if (createNew && currentType !== "Palettes" && currentType !== "Animations") {
           
@@ -906,7 +913,7 @@ function openEditDialog(existingRow, createNew) {
 }
 
 /* ======================================================================================
-   FUNZIONE DI VALIDAZIONE SIZE
+   SIZE VALIDATION FUNCTION
    ====================================================================================== */
 function checkSizeConstraints(type, subtype, row) {
   if (!row.Size) return true;
@@ -916,7 +923,7 @@ function checkSizeConstraints(type, subtype, row) {
   let hNum = parseInt(h, 10) || 0;
 
   if (type === "Sprites") {
-    // Validazione Sprites (già presente)
+    // Sprites validation (already present)
     if (wNum < 8 || wNum > 64 || hNum < 8 || hNum > 64) {
       openInfoDialog("Sprites size must be in [8..64]!", null);
       return false;
@@ -927,7 +934,7 @@ function checkSizeConstraints(type, subtype, row) {
     }
   }
   else if (type === "Tiles" && subtype === "Bitmap") {
-    // Validazione Tiles bitmap (già presente)
+    // Tiles bitmap validation (already present)
     if (wNum < 4 || wNum > 64 || hNum < 4 || hNum > 64) {
       openInfoDialog("Tiles Bitmap size must be in [4..64]", null);
       return false;
@@ -941,14 +948,14 @@ function checkSizeConstraints(type, subtype, row) {
 
   }
   else if (type === "Fonts") {
-    // RICHIESTA: size minima 50x50, massima 1024x512
+    // REQUEST: minimum size 50x50, maximum 1024x512
     if (wNum > 20 || hNum > 20 || wNum < 8 || hNum < 8) {
       openInfoDialog("Fonts size must be in [8..20]", null);
       return false;
     }
   }
   else if (type === "Maps") {
-    // RICHIESTA: size minima 50x50, massima 1024x512
+    // REQUEST: minimum size 50x50, maximum 1024x512
     if (wNum > 100 || hNum > 100 || wNum < 2 || hNum < 2) {
       openInfoDialog("Maps size must be in [2..100]", null);
       return false;
@@ -967,7 +974,7 @@ function getFieldsForType(type, row, createNew) {
   ];
 
   if (type === "Sprites") {
-    // size abilitato se createNew
+    // size enabled if createNew
     fields.push({
       label: "Size (W/H): ",
       name: "Size",
@@ -1100,7 +1107,7 @@ function getFieldsForType(type, row, createNew) {
     });
   }
   else if (type === "Animations") {
-    // se createNew => combo, se modifica => no combo
+    // if createNew => combo, if edit => no combo
     if (createNew) {
       fields.push({
         label: "Sprite/Tile: ",
@@ -1130,7 +1137,7 @@ function getTileOptions() {
 }
 
 function getSpriteTileOptionsWithSuffix() {
-  // per Animations => "ID_S" o "ID_T"
+  // for Animations => "ID_S" or "ID_T"
   let list = dataStore.filter(r => r.Type === "Sprites" || r.Type === "Tiles");
   return list.map(r => {
     let suffix = (r.Type === "Sprites") ? "S" : "T";
@@ -1143,7 +1150,7 @@ function getSpriteTileOptionsWithSuffix() {
 }
 
 /* ======================================================================================
-   EDITOR DI "PALETTE-COLORS-EDITOR"
+   EDITOR OF "PALETTE-COLORS-EDITOR"
    ====================================================================================== */
 function renderPaletteEditor(container, tempRow) {
   let paletteArray = [];
@@ -1156,14 +1163,14 @@ function renderPaletteEditor(container, tempRow) {
   } else {
     paletteArray = getDefaultMSXColors(false);
   }
-  tempPaletteColors = [...paletteArray]; // Copia i colori nella variabile globale
+  tempPaletteColors = [...paletteArray]; // Copy colors to global variable
 
   tempPaletteColors.forEach(colObj => {
     let box = document.createElement("span");
     box.className = "color-square";
-    let colorCode = colObj.color;
+    let colorCode = colObj.color.toUpperCase();
     let hexID = (colObj.id + "").toUpperCase();
-    box.title =`RGB: ${colorCode}\nMSX: ${rgbToMsx((colorCode))}`; 
+    box.title = `RGB: ${colorCode}\nMSX: ${rgbToMsx(colorCode)}`;
 
     if (hexID === "0") {
       box.classList.add("checkerboard");
@@ -1177,6 +1184,8 @@ function renderPaletteEditor(container, tempRow) {
           let labelSpan = box.querySelector("span");
           let isDark = computeBrightness(newColor) < 128;
           labelSpan.style.color = isDark ? "#fff" : "#000";
+          // Update the tooltip with the new color
+          box.title = `RGB: ${newColor}\nMSX: ${rgbToMsx(newColor)}`;
         });
       });
     }
@@ -1251,7 +1260,7 @@ function openColorPickerDialog(initialColor, callback) {
   colorInput.value = rgbToHex(initialColor);
 
   function onOk() {
-    let newColor = colorInput.value;
+    let newColor = colorInput.value.toUpperCase();
     if(newColor==="#000000"){
       newColor="#010101";
     }
@@ -1350,7 +1359,7 @@ function openInfoDialog(message, onClose) {
 }
 
 /* ======================================================================================
-   UTILITY COLORI
+   COLOR UTILITY
    ====================================================================================== */
 function computeBrightness(hex) {
   let c = hex.replace("#","");
@@ -1361,10 +1370,16 @@ function computeBrightness(hex) {
   return (0.299*r + 0.587*g + 0.114*b);
 }
 
-
+function rgbToHex(rgb) {
+  let hex = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  function hexify(x) {
+    return ("0" + parseInt(x).toString(16)).slice(-2).toUpperCase();
+  }
+  return "#" + hexify(hex[1]) + hexify(hex[2]) + hexify(hex[3]);
+}
 
 /* ======================================================================================
-   EVENT LISTENERS (al caricamento)
+   EVENT LISTENERS (on load)
    ====================================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded");
@@ -1410,18 +1425,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  //function updateRecord(updatedRecord, action) {
-  //  const index = dataStore.findIndex(r => r.Type === updatedRecord.Type && r.ID === updatedRecord.ID);
-  //  if (index !== -1) {
-  //    console.log("updateRecordSettings", pdatedRecord.EditingSettings);
-  //    dataStore[index].EditingSettings = updatedRecord.EditingSettings;
-  //    if(action=="ok"){
-  //      dataStore[index].Values = updatedRecord.Values;
-  //    }
-  //    saveDataStore();
-  //    updateGrid();
-  //  }
-  //}
+
 
   document.getElementById("dataGrid").addEventListener("click", (e) => {
     if (e.target.classList.contains("details-button")) {
@@ -1510,12 +1514,25 @@ let backgroundColor = "#ffffff";
 let patternsBackgroundColor = "#ffffff";
 
 function openDetailsView(record) {
+  let command='openDetailsView';
   const childRecord = dataStore.find(r => r.Type === record.ChildObjectType && r.ID.toString() === record.ChildObjectID.toString());
-  
+  let spriteTilePaletteRecord=[];
+  if(record.Type==="Animations" || record.Type==="Maps"){
+    spriteTilePaletteRecord=dataStore.find(r => r.Type === childRecord.ChildObjectType && r.ID.toString() === childRecord.ChildObjectID.toString());
+    console.log("spriteTilePaletteRecord",spriteTilePaletteRecord);
+    console.log("childRecord",childRecord);
+    if(childRecord.Values===null || childRecord.Values===undefined || childRecord.Values.length===0){
+      openInfoDialog("No items in \"" + childRecord.Description + "\" " + childRecord.Type.toLowerCase() + " sets", null);
+      return;
+    }
+    command=record.Type=="Animations"?"openAnimationsDetailsView":"openMapsDetailsView";
+  }
   vscode.postMessage({
-    command: 'openDetailsView',
+    command: command,
     record: record,
-    childRecord: childRecord
+    childRecord: childRecord,
+    spriteTilePaletteRecord: spriteTilePaletteRecord,
+    dataStore: dataStore
   });
 }
 

@@ -1,4 +1,23 @@
 "use strict";
+/**
+ * MSXDev Tool Extension for VS Code
+ * Copyright (C) 2025  Fausto Pracek
+ *
+ * This file is part of MSXDev Tool Extension for VS Code.
+ *
+ * MSXDev Tool Extension for VS Code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deactivate = exports.activate = void 0;
 const vscode = require("vscode");
@@ -112,7 +131,13 @@ function initializeMainPanel(context, loadedData) {
                 saveDataToFile(message.data);
                 return;
             case 'openDetailsView':
-                openDetailsView(context, message.record, message.childRecord);
+                openDetailsView(context, message.record, message.childRecord, null, "Details", message.dataStore);
+                return;
+            case 'openAnimationsDetailsView':
+                openDetailsView(context, message.record, message.childRecord, message.spriteTilePaletteRecord, "Animations", message.dataStore);
+                return;
+            case 'openMapsDetailsView':
+                openDetailsView(context, message.record, message.childRecord, message.spriteTilePaletteRecord, "Maps", message.dataStore);
                 return;
             case 'closeDetailsView':
                 closeDetailsView(context, message.record, message.action);
@@ -128,12 +153,26 @@ function initializeMainPanel(context, loadedData) {
         data: JSON.stringify(loadedData)
     });
 }
-function openDetailsView(context, record, childRecord) {
+function openDetailsView(context, record, childRecord, spriteTilePaletteRecord, type, dataStore) {
     if (mainPanel) {
         mainPanel.dispose();
         mainPanel = null;
     }
-    detailsPanel = vscode.window.createWebviewPanel('msxDetailsView', // Internal identifier
+    let internalPanelID = "msxDetailsView";
+    if (type === "Animations") {
+        internalPanelID = "msxAnimationsDetailsView";
+    }
+    else if (type === "Maps") {
+        internalPanelID = "msxMapsDetailsView";
+    }
+    let panelName = "details.html";
+    if (type === "Animations") {
+        panelName = "animations.html";
+    }
+    else if (type === "Maps") {
+        panelName = "maps.html";
+    }
+    detailsPanel = vscode.window.createWebviewPanel(internalPanelID, // Internal identifier
     'MSX Objects editor', // Visible title
     vscode.ViewColumn.One, // Column to show the webview in
     {
@@ -144,7 +183,7 @@ function openDetailsView(context, record, childRecord) {
         detailsPanel = null;
     });
     // Path to the HTML file in media/details.html
-    const htmlPath = path.join(context.extensionPath, 'media', 'details.html');
+    const htmlPath = path.join(context.extensionPath, 'media', panelName);
     let htmlContent = fs.readFileSync(htmlPath, 'utf8');
     // Path to the utils.js file
     const utilsPath = vscode.Uri.file(path.join(context.extensionPath, 'media', 'utils.js'));
@@ -158,7 +197,9 @@ function openDetailsView(context, record, childRecord) {
         command: 'loadDetails',
         record: record,
         childRecord: childRecord,
-        bufferedCopiedCells: selectedCells
+        bufferedCopiedCells: selectedCells,
+        spriteTilePaletteRecord: spriteTilePaletteRecord,
+        dataStore: dataStore
     });
     detailsPanel.webview.onDidReceiveMessage(message => {
         switch (message.command) {

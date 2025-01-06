@@ -10,7 +10,7 @@
     "Other"
   ],
   "main": "./out/extension.js",
-  "publisher": "LaTuaOrganizzazioneODNome",
+  "publisher": "Fausto Pracek",
   "activationEvents": [
     "onCommand:msxdevtool-extension.openWebview"
   ],
@@ -18,7 +18,7 @@
     "commands": [
       {
         "command": "msxdevtool-extension.openWebview",
-        "title": "Open MSX Sprite Grid Editor"
+        "title": "MSXDev tool"
       }
     ]
   },
@@ -30,5 +30,10 @@
     "@types/vscode": "^1.75.0",
     "@types/node": "16.x",
     "typescript": "^4.8.0"
+  },
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fpracek/MSXDevToolExtension.git"
   }
 }

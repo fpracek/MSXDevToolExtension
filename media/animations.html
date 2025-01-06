@@ -1,0 +1,1586 @@
+<!--
+
+/**
+ * MSXDev Tool Extension for VS Code
+ * Copyright (C) 2025  Fausto Pracek
+ *
+ * This file is part of MSXDev Tool Extension for VS Code.
+ *
+ * MSXDev Tool Extension for VS Code is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MSX Dev Tool</title>
+  <style>
+    .grid-container {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+      width: 100%;
+      justify-content: flex-start; /* Justify to the left */
+    }
+
+    .tab {
+      padding: 0px 20px;
+      cursor: pointer;
+      border-bottom: none;
+      margin-bottom: -1px;
+      color: black; /* Black text */
+    }
+
+    .tab.active {
+      background-color: #fff;
+      border-bottom: 1px solid #fff;
+      font-weight: bold; /* Bold */
+      font-size: 1.1em; /* Slightly larger font */
+    }
+
+    .tab-content {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+    #playLabel {
+      width: 64px;
+      height: 40px;
+      color: white;
+      background-color: black;
+      border: solid 2px white;
+      text-align: center;
+      font-size: 30px;
+  }
+    #toolbar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+      margin-bottom: 20px; /* Adds space between the palette and the grid */
+    }
+
+    .color {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      position: relative;
+    }
+
+    .color.selected {
+      font-weight: bold;
+      border: 2px solid white; /* 2px white line */
+      box-shadow: 0 0 0 1px black inset;
+    }
+
+    .color .inner {
+      width: 16px;
+      height: 16px;
+      background-color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: black; /* Black font */
+    }
+
+    .grid-container {
+      position: relative;
+      overflow: auto;
+      border: 1px solid #000;
+      width: 80%;
+      height: 80%;
+    }
+
+    canvas {
+      background-color: #fff;
+      cursor: default; /* Change cursor to arrow */
+      display: block;
+      border: 1px solid white; /* Add white border */
+    }
+
+    .checkerboard {
+      background-size: 8px 8px;
+      background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc),
+        linear-gradient(45deg, #ccc 25%, transparent 25%, transparent 75%, #ccc 75%, #ccc);
+      background-position: 0 0, 8px 8px;
+    }
+
+    input[type=number] {
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input {
+      width: 50px;
+      text-align: center;
+    }
+
+    #contextMenu ul li {
+      color: gray; /* Default color for inactive items */
+    }
+    #contextMenu ul li.active {
+      color: black; /* Color for active items */
+    }
+
+    .selected-cell {
+      background-color: rgba(128, 128, 128, 0.5); /* Transparent gray */
+    }
+
+    #contextMenu {
+      pointer-events: auto; /* Ensures clicks on items are received */
+    }
+
+    .error {
+      border: 1px solid red;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .visible {
+      display: block;
+    }
+
+    #objectTable {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    #objectTable th, #objectTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    #objectTable tr.selected {
+      background-color: #f0f0f0;
+      border: 1px solid red;
+    }
+    #animationList {
+      margin-left: 10px; /* Add margin to the left */
+      width: 200px; /* Set width to 200px */
+    }
+    .grid-table-container {
+      overflow-y: auto;
+      max-height: 400px; /* Adjust as needed */
+    }
+    .grid-table-container table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .grid-table-container th, .grid-table-container td {
+      border: 1px solid black; /* Black cell borders */
+      padding: 8px;
+      text-align: left;
+      background-color: black;
+    }
+    .grid-table-container th {
+      position: sticky;
+      top: 0;
+      background: black; /* Black header background */
+      color: white; /* White header text */
+      z-index: 1;
+    }
+    .grid-table-container td {
+      background: white; /* White cell background */
+      color: black; /* Black cell text */
+    }
+    .grid-table-container {
+      overflow-y: auto;
+      max-height: 400px; /* Adjust as needed */
+    }
+    .grid-table-container table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .grid-table-container th, .grid-table-container td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    .grid-table-container th {
+      position: sticky;
+      top: 0;
+      background: #f0f0f0;
+      z-index: 1;
+    }
+  </style>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden; /* Prevent scrollbars on the body */
+      user-select: none; /* Prevent text selection */
+      -webkit-user-select: none; /* Prevent text selection */
+      user-select: none; /* Prevent text selection */
+    }
+    .details-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .details-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: white;
+      flex-shrink: 0;
+    }
+    .main-detail-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .title-area {
+      padding: 10px;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+      flex-shrink: 0;
+    }
+    .editing-area {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      overflow: hidden;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .splitter {
+      width: 5px;
+      background: #ccc;
+      cursor: col-resize;
+      flex-shrink: 0;
+    }
+    .panel {
+      width: 50%; /* Set initial width */
+      overflow: auto;
+    }
+    .horizontal-splitter {
+      height: 5px;
+      background: #ccc;
+      cursor: row-resize;
+      flex-shrink: 0;
+    }
+    .vertical-panel {
+      height: 50%; /* Set initial height */
+      overflow: auto;
+    }
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-image {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .preview-image-title {
+      flex-shrink: 0;
+      padding: 5px;
+      background: #e0e0e0;
+      border-bottom: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+    }
+    .preview-image-canvas {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      overflow: auto;
+      border: 1px solid white;
+    }
+    .preview-image-info {
+      flex-shrink: 0;
+      padding: 5px;
+      background: #e0e0e0;
+      border-top: 1px solid #ccc;
+      color: black; /* Ensure the text is black */
+    }
+    .tab {
+      overflow: hidden;
+      border-bottom: 1px solid #ccc;
+      color: white;
+    }
+
+    .tab button {
+      background-color: #ccc; /* Set initial background color */
+      float: left;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      transition: 0.3s;
+    }
+
+    .tab button:hover {
+      background-color: #ddd;
+    }
+
+    .tab button.active {
+      background-color: #ccc;
+    }
+
+    .tabcontent {
+      display: none;
+      padding: 6px 12px;
+      border-top: none;
+      height: calc(100%); /* Default height */
+      box-sizing: border-box;
+      background: black; /* Make the background transparent */
+      overflow: auto; /* Allow scrollbars */
+    }
+    .images-viewer {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .images-buttons {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px;
+      background: #e0e0e0;
+      border-top: 1px solid #ccc;
+      flex-shrink: 0;
+    }
+
+    .right-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .images-grid {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 5px;
+      overflow: auto;
+    }
+
+    .image-container {
+      position: relative;
+      display: inline-block; /* Ensure the container wraps around the image */
+      padding: 3px; /* 1px for white border + 2px for transparent border */
+      background: white; /* Outer white border */
+      box-sizing: content-box; /* Ensure padding is included in the element's dimensions */
+      cursor: move; /* Show move cursor when dragging */
+      border: 1px solid white; /* Always have a 1px white border */
+    }
+
+    .image-container.no-drag {
+      cursor: default; /* Default cursor when dragging is disabled */
+    }
+
+    .image-container img {
+      display: block;
+      image-rendering: pixelated; /* Ensure images are not blurred */
+    }
+    .image-container img:focus {
+      border-width: 2px;
+    }
+
+    .image-container.focused {
+      outline: 3px solid white; /* Outer white border */
+      box-shadow: 0 0 0 3px black; /* Inner black border */
+    }
+
+    .placeholder {
+      background: #f0f0f0;
+      border: 2px dashed #ccc;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .dialog {
+      background: #fff;
+      padding: 20px;
+      border: 1px solid #666;
+      border-radius: 4px;
+      min-width: 250px;
+      text-align: center;
+      color: black;
+      width: 300px; /* Ensure the dialog is wide enough */
+    }
+    .color-square {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 1px solid #999;
+      vertical-align: middle;
+      box-sizing: border-box;
+      margin-left: 2px; /* Add margin between button and color square */
+      cursor: pointer; /* Add cursor pointer to indicate it's clickable */
+    }
+    .color-picker-dialog {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .color-picker-dialog label,
+    .color-picker-dialog input,
+    .color-picker-dialog button {
+      margin: 0 5px;
+    }
+    th, td {
+      width: 24px; /* Ensure cells are square */
+      height: 24px; /* Ensure cells are square */
+      
+    }
+    th {
+      /* padding: 8px; */
+      background: #f0f0f0; /* Background color for headers */
+      border-bottom: 2px solid #ccc; /* Add bottom border to headers */
+    }
+    /* td {
+      padding: 4px;
+    } */
+    .header-spacing {
+      height: 24px; /* Ensure spacing is square */
+    }
+    .row-header-spacing {
+      width: 24px; /* Ensure spacing is square */
+    }
+    .table-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .focused {
+      outline: 2px solid red;
+    }
+    .grid-editor-container {
+      height: calc(100% - 60px); /* Adjust height to fill remaining space */
+      padding-left: 10px; /* Add padding to move the grid canvas to the right */
+    }
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .color-selector {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 10px;
+      gap: 5px; /* Add gap between squares */
+    }
+    .color-square {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 35px; /* Increased by 75% */
+      height: 35px; /* Increased by 75% */
+      border: 1px solid #999;
+      vertical-align: middle;
+      box-sizing: border-box;
+      cursor: pointer;
+      position: relative;
+      text-align: center; /* Center text horizontally */
+    }
+    .color-square span {
+      font-size: 21px; /* Increased by 75% */
+      font-weight: bold;
+      display: inline-block;
+      width: 100%; /* Ensure the span takes the full width of the square */
+      text-align: center; /* Center text horizontally */
+    }
+    .color-square.active {
+      outline: 3px solid red; /* Outer red border */
+      box-shadow: 0 0 0 2px black; /* Inner black border */
+    }
+    .color-square:focus span {
+      font-weight: bold; /* Make text bold when focused */
+    }
+    .checkerboard {
+      background: repeating-linear-gradient(
+        45deg,
+        #ccc 0,
+        #ccc 5px,
+        #fff 5px,
+        #fff 10px
+      );
+      cursor: not-allowed;
+    }
+    .preview-image-canvas img {
+      transition: transform 0.2s; /* Smooth zoom transition */
+      max-width: 100%; /* Ensure the image does not expand beyond its container */
+      max-height: calc(100% - 40px); /* Ensure the image does not overlap with title and info */
+      image-rendering: pixelated; /* Ensure images are not blurred */
+    }
+    .canvas-container {
+      display: flex;
+      align-items: center;
+    }
+    .canvas-container canvas {
+      border: 1px solid #000;
+    }
+    #renameInput {
+      width: 200px; /* Set minimum width for the input */
+      margin-bottom: 10px; /* Add space below the input */
+    }
+    #renameOverlay .dialog {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #renameOverlay .dialog .button-container {
+      display: flex;
+      gap: 10px; /* Add space between buttons */
+    }
+  </style>
+</head>
+<body>
+  <div class="details-view">
+    <div class="main-detail-panel">
+      <div class="title-area" id="titleArea"></div>
+      <div class="editing-area" id="editingArea">
+        <div class="panel left-panel" id="leftPanel">
+          <div class="vertical-panel" id="previewPanel">
+            <div class="preview-image" id="previewImage" >
+              <div class="preview-image-title" id="previewImageInfo"></div>
+              <div class="preview-image-canvas" id="previewImageCanvas" style="background-color: black;">
+                <img id="imageCanvas" style="display: none;" />
+                <label id="playLabel">Play</label>
+              </div>
+              
+            </div>
+          </div>
+          <div class="horizontal-splitter" id="horizontalSplitter"></div>
+          <div class="vertical-panel" id="selectionPanel" style="overflow-y: hidden;"></div>
+        </div>
+        <div class="splitter" id="splitter"></div>
+        <div class="panel" id="rightPanel">
+          <!-- New animation details panel -->
+          <div id="animationDetails" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <button id="previousRecordButton"><</button>
+            <select id="animationList"></select>
+            <button id="nextRecordButton">></button>
+            <button style="padding-left: 10px;" id="addAnimationButton">New</button>
+            <button id="removeAnimationButton" style="display: none;">Remove</button>
+            <button id="renameAnimationButton">Rename</button>
+            <label for="repeatTimes">Repeat times:</label>
+            <select id="repeatTimes">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+          <div class="color-selector" id="colorSelector"></div>
+          <div class="grid-editor-container" class="grid-container" id="gridContainer">
+            <div class="canvas-container">
+              <div id="gridCanvas" style="width: 100%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="details-buttons">
+        <button id="detailsCancelButton">Cancel</button>
+        <button id="detailsOkButton">OK</button>
+      </div>
+    </div>
+  </div>
+  <div id="confirmOverlay" class="overlay">
+    <div id="confirmDialog" class="dialog">
+      <p>Are you sure you want to remove this item?</p>
+      <button id="confirmOk">Yes</button>
+      <button id="confirmCancel">No</button>
+    </div>
+  </div>
+  <div id="colorPickerOverlay" class="overlay">
+    <div id="colorPickerDialog" class="dialog color-picker-dialog">
+      <label>Choose color:</label>
+      <input type="color" id="colorPickerInput" />
+      <button id="colorPickerOk">OK</button>
+      <button id="colorPickerCancel">Cancel</button>
+    </div>
+  </div>
+  <div id="renameOverlay" class="overlay">
+    <div class="dialog">
+      <label for="renameInput">Description:</label>
+      <input type="text" id="renameInput" />
+      <div class="button-container">
+        <button id="renameOkButton">OK</button>
+        <button id="renameCancelButton">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <script src="./utils.js"></script>
+  
+  <script>
+    const vscode = acquireVsCodeApi();
+    let currentRecord = null;
+    let currentChildRecord = null;
+    let currentPaletteRecord = null;
+    let draggedElement = null;
+    let placeholder = null;
+    let focusedElementIds = { imagesList1: null, imagesList2: null };
+    let draggedElementParent = null;
+    let selectedObjectID = -1;
+    let currentPaletteColorID = 0;
+    let isDrawing = false;
+    let isErasing = false;
+    let selectedAnimationID=-1;
+    let selectionStart = null;
+    let selectionEnd = null;
+    let copiedCells = [];
+    let isPasting = false;
+    let pasteStart = null;
+    let currentDataStore=[];
+    let undoStack = [];
+    let redoStack = [];
+
+    window.addEventListener('message', event => {
+      const message = event.data;
+      switch (message.command) {
+        case 'loadDetails':
+          loadDetails(message.record, message.childRecord, message.bufferedCopiedCells, message.spriteTilePaletteRecord,message.dataStore);
+          break;
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'unload' });
+    });
+
+    function loadDetails(record, childRecord, bufferedCopiedCells,spriteTilePaletteRecord,dataStore) {
+ 
+      currentDataStore=dataStore;
+      currentPaletteRecord = spriteTilePaletteRecord;
+      copiedCells = bufferedCopiedCells || [];
+      currentRecord = record;
+      currentChildRecord = childRecord;
+      selectedObjectID = -1;
+      const titleArea = document.getElementById('titleArea');
+      titleArea.textContent = `${record.Type}: ${record.ID} - ${record.Description}`;
+      
+      
+      
+      const previewImageInfo = document.getElementById('previewImageInfo');
+      previewImageInfo.textContent = 'Zoomable animation (CTRL+mouse wheel)';
+      
+      const selectionPanel = document.getElementById('selectionPanel');
+
+      let tabContentsHtml = '';
+
+      
+        tabContentsHtml = `
+          <div id="Tab1" class="tabcontent" style="display: block; height: calc(100%);">
+            ${createImagesViewer('imagesList1')}
+          </div>
+        `;
+
+    
+
+      selectionPanel.innerHTML = tabContentsHtml;
+      
+      const rightPanel = document.getElementById('rightPanel');
+
+      // Set initial zoom levels from EditingSettings
+      if (!record.EditingSettings) {
+        record.EditingSettings = {};
+      }
+      if (!record.EditingSettings.ObjectsGridZoom) {
+        record.EditingSettings.ObjectsGridZoom = 1;
+      }
+      if (!currentRecord.EditingSettings.PreviewZoom) {
+        currentRecord.EditingSettings.PreviewZoom = 1;
+      }
+      if (!currentRecord.EditingSettings.GridEditorZoom) {
+        currentRecord.EditingSettings.GridEditorZoom = 1;
+      }
+      applyPreviewZoom();
+      if (record.Values == null || record.Values.length == 0) {
+        record.Values = [];
+        record.Values.push({
+          ID: 1,
+          Order: 1,
+          RepeatTimes: 3,
+          Name: record.Type.slice(0, -1) + " #1",
+          Objects: []
+        });
+      }
+      updateAnimationList();
+      
+      if (!currentRecord.EditingSettings.RepeatTimes) {
+        currentRecord.EditingSettings.RepeatTimes = 3;
+      }
+
+      updateTab1Grid();
+
+      renderImages('imagesList1', spritesTilesList);
+     
+
+      // Set initial background colors from EditingSettings
+      if (record.EditingSettings) {
+        const colorSquare1 = document.querySelector('#imagesList1 .color-square');
+        if (colorSquare1 && record.EditingSettings.ObjectsGridBackgroundColor) {
+          colorSquare1.style.backgroundColor = record.EditingSettings.ObjectsGridBackgroundColor;
+        }
+      }
+
+      
+
+      // Ensure all tabs have the same background color initially
+      const tablinks = document.getElementsByClassName("tablinks");
+      for (let i = 0; i < tablinks.length; i++) {
+        tablinks[i].style.backgroundColor = '#000000';
+        tablinks[i].style.color = '#FFFFFF';
+      }
+
+     
+      // Set focus to the first image in Tab1 if it exists
+      const firstImageContainer = document.querySelector('#imagesList1 .image-container');
+      if (firstImageContainer) {
+        focusImage({ currentTarget: firstImageContainer }, 'imagesList1');
+      }
+
+
+      
+
+
+
+      
+  
+
+   
+
+      // Initialize grid and block separator visibility from EditingSettings
+      if (!record.EditingSettings) {
+        record.EditingSettings = {};
+      }
+    
+      selectedAnimationID=currentChildRecord.Values[0].ID;
+
+      updateAnimationList();
+      populateGridCanvas();
+  
+
+      // Set repeatTimes value from currentRecord.Values for the selected item in animationList
+      const animationList = document.getElementById('animationList');
+      const repeatTimesSelect = document.getElementById('repeatTimes');
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = record.Values.find(value => value.ID === selectedID);
+      if (selectedOption && selectedOption.RepeatTimes) {
+        repeatTimesSelect.value = selectedOption.RepeatTimes;
+      } else {
+        repeatTimesSelect.value = 3; // Default value
+      }
+    
+      selectedAnimationID=currentChildRecord.Values[0].ID;
+      populateGridCanvas();
+    }
+    async function updateTab1Grid() {
+      spritesTilesList = [];
+      currentChildRecord.Values.forEach(spriteTile => {
+        spritesTilesList.push({
+          ID: spriteTile.ID,
+          Description: spriteTile.Name,
+          Image: getImageFromObject(spriteTile.ID, currentChildRecord, currentPaletteRecord),
+          Order: spriteTile.Order
+        });
+      });
+    }
+ 
+
+    function createImagesViewer(id, enableDrag = true) {
+      const type = currentChildRecord.Type.toLowerCase();
+      return `
+        <div class="images-viewer" id="${id}">
+          <div class="images-grid" ${enableDrag ? 'ondrop="drop(event)" ondragover="allowDrop(event)"' : ''} style="background-color: black; ${!enableDrag ? 'cursor: default;' : ''}"></div>
+          <div class="images-buttons">
+            <div class="color-square" id="${id}-color" onclick="openColorPicker('${id}')" title="Click here to change ${type} background color"></div>
+            <input type="text" class="image-id" id="${id}-id" readonly style="width: 30px; margin: 0 5px;">
+            <input type="text" class="image-description" id="${id}-description" readonly style="flex: 1; margin: 0 5px;" oninput="updateDescription('${id}')">
+            <div class="right-buttons">
+              <button onclick="addImage()">Add</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    function openColorPicker(gridId) {
+      const overlay = document.getElementById("colorPickerOverlay");
+      const colorInput = document.getElementById("colorPickerInput");
+      const okBtn = document.getElementById("colorPickerOk");
+      const cancelBtn = document.getElementById("colorPickerCancel");
+      const colorSquare = document.getElementById(`${gridId}-color`);
+      const currentColor = colorSquare ? colorSquare.style.backgroundColor : '#ffffff';
+
+      overlay.style.display = "flex";
+      colorInput.value = rgbToHex(currentColor);
+
+      function onOk() {
+        const newColor = colorInput.value;
+        document.querySelectorAll(`#${gridId} .image-container`).forEach(container => {
+          container.style.backgroundColor = newColor;
+        });
+        if (colorSquare) {
+          colorSquare.style.backgroundColor = newColor;
+        }
+        if (!currentRecord.EditingSettings) {
+          currentRecord.EditingSettings = {};
+        }
+        if (gridId === 'imagesList1') {
+          currentRecord.EditingSettings.ObjectsGridBackgroundColor = newColor;
+          applyPreviewBackgroundColor(); // Update imageCanvas background color
+        } else if (gridId === 'imagesList2') {
+          currentRecord.EditingSettings.PatternGridBackgroundColor = newColor;
+        }
+        closeColorPickerOverlay();
+        focusOnColorSquare(gridId);
+      }
+
+      function onCancel() {
+        closeColorPickerOverlay();
+      }
+
+      function closeColorPickerOverlay() {
+        overlay.style.display = "none";
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+      }
+
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    }
+    function applyPreviewBackgroundColor() {
+      const img = document.getElementById('imageCanvas');
+      const backgroundColor = currentRecord.EditingSettings.ObjectsGridBackgroundColor || 'white';
+      img.style.backgroundColor = backgroundColor;
+    }
+    function addImage() {
+      let newID = 1;
+      if (currentChildRecord.Values.length > 0) {
+        newID = currentChildRecord.Values[currentChildRecord.Values.length - 1].ID + 1;
+      }
+      let newOrder = 1;
+      if (currentChildRecord.Values.length > 0) {
+        newOrder = currentChildRecord.Values[currentChildRecord.Values.length - 1].Order + 1;
+      }
+      currentRecord.Values.find(v=>v.ID==selectedAnimationID).Objects.push({
+        ID: newID,
+        Milliseconds: 200,
+        ObjectID: selectedObjectID,
+        Order: newOrder
+      });
+      populateGridCanvas();
+        
+    }
+
+
+    
+
+    function renderImages(id, images) {
+      const imagesGrid = document.querySelector(`#${id} .images-grid`);
+
+      if (!imagesGrid) return; // Ensure the element exists
+      const [width, height] = currentChildRecord.Size.split('x').map(Number);
+      const zoomLevel = id === 'imagesList1' ? currentRecord.EditingSettings.ObjectsGridZoom : currentRecord.EditingSettings.PatternsGridZoom;
+      const imageWidth = width * zoomLevel || 16;
+      const imageHeight = height * zoomLevel || 16;
+
+      images.sort((a, b) => a.Order - b.Order);
+
+      const backgroundColor = getBackgroundColor(id);
+      const borderColor = getContrastingColor(backgroundColor);
+
+      imagesGrid.innerHTML = images.map((image, index) => `
+        <div class="image-container ${id === 'imagesList2' ? 'no-drag' : ''}" id="image-${id}-${image.ID}" title="${image.ID} - ${image.Description}" style="width: ${imageWidth + 3}px; height: ${imageHeight + 3}px; background-color: ${backgroundColor}; border-color: ${borderColor};" draggable="${id === 'imagesList1'}" ondragstart="drag(event)" ondragover="allowDrop(event)" ondrop="drop(event)" onclick="focusImage(event, '${id}')">
+          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};">
+        </div>
+      `).join('');
+
+      // Show the remove button only if there are at least two images
+   
+      if(id === 'imagesList1'){
+        if(selectedObjectID === -1){
+          selectedObjectID=currentRecord.Values[0].ID;
+        }
+        const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${selectedObjectID}"]`);
+        if (focusedElement) {
+          document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+          focusedElement.classList.add('focused');
+        }
+      }
+      
+      
+    }
+
+    function getBackgroundColor(gridId) {
+      if (currentRecord.EditingSettings) {
+        if (gridId === 'imagesList1' && currentRecord.EditingSettings.ObjectsGridBackgroundColor) {
+          return currentRecord.EditingSettings.ObjectsGridBackgroundColor;
+        } else if (gridId === 'imagesList2' && currentRecord.EditingSettings.PatternGridBackgroundColor) {
+          return currentRecord.EditingSettings.PatternGridBackgroundColor;
+        }
+      }
+      return 'white'; // Default background color
+    }
+
+    
+
+    function openConfirmDialog(onConfirm) {
+      const overlay = document.getElementById("confirmOverlay");
+      const okBtn = document.getElementById("confirmOk");
+      const cancelBtn = document.getElementById("confirmCancel");
+
+      overlay.style.display = "flex";
+
+      let onOk = () => {
+        closeConfirm();
+        onConfirm();
+      };
+      let onCancel = () => {
+        closeConfirm();
+      };
+      function closeConfirm() {
+        overlay.style.display = "none";
+        okBtn.removeEventListener("click", onOk);
+        cancelBtn.removeEventListener("click", onCancel);
+      }
+      okBtn.addEventListener("click", onOk);
+      cancelBtn.addEventListener("click", onCancel);
+    }
+
+    function zoomImages(delta, gridId) {
+      if (!currentRecord.EditingSettings) {
+        currentRecord.EditingSettings = {};
+      }
+
+      const zoomIncrement = 0.05; // Smaller increment for more gradual zoom
+
+      if (gridId === 'imagesList1') {
+        currentRecord.EditingSettings.ObjectsGridZoom += delta * zoomIncrement;
+        if (currentRecord.EditingSettings.ObjectsGridZoom < 0.1) {
+          currentRecord.EditingSettings.ObjectsGridZoom = 0.1;
+        }
+        renderImages('imagesList1', spritesTilesList);
+      } else if (gridId === 'gridCanvas') {
+
+        currentRecord.EditingSettings.GridEditorZoom += (delta > 0 ? 1 : -1) * zoomIncrement;
+        if (currentRecord.EditingSettings.GridEditorZoom < 1.5) {
+          currentRecord.EditingSettings.GridEditorZoom = 1.5;
+        }
+      }
+    }
+
+    document.addEventListener('wheel', (event) => {
+      if (event.ctrlKey) {
+        const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+        const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridEditorContainer = document.getElementById('gridContainer');
+        if (event.target.closest(`#${gridId}`) || event.target.closest(`#${activeTab.id}`) || event.target === gridCanvas || event.target.closest(`#gridContainer`)) {
+          event.preventDefault();
+          const targetGridId = (event.target === gridCanvas || event.target.closest(`#gridContainer`)) ? 'gridCanvas' : gridId;
+          zoomImages(event.deltaY * -1, targetGridId);
+
+        }
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey) {
+        const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+        const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridEditorContainer = document.getElementById('gridContainer');
+        if (event.target.closest(`#${gridId}`) || event.target.closest(`#${activeTab.id}`) || event.target === gridCanvas || event.target.closest(`#gridContainer`)) {
+          event.preventDefault();
+          const targetGridId = (event.target === gridCanvas || event.target.closest(`#gridContainer`)) ? 'gridCanvas' : gridId;
+          if (event.key === '+' || event.key === '=' || event.key === 'Add') {
+            zoomImages(1, targetGridId);
+          } else if (event.key === '-' || event.key === 'Subtract') {
+            zoomImages(-1, targetGridId);
+          }
+        }
+      }
+    });
+
+    function allowDrop(event) {
+      event.preventDefault();
+    }
+
+    function drag(event) {
+      const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+      const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+      if(gridId==="imagesList2"){
+        return;
+      }
+      draggedElement = event.target.closest('.image-container');
+      draggedElementParent = draggedElement ? draggedElement.parentNode : null;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData("text/plain", draggedElement.id);
+    }
+
+    function dragOver(event) {
+      event.preventDefault();
+    }
+
+    function drop(event) {
+      event.preventDefault();
+      const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+      const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+      if(gridId==="imagesList2"){
+        return;
+      }
+      const targetElement = event.target.closest('.image-container');
+      if (targetElement && draggedElement && draggedElementParent) {
+        const targetParent = targetElement.parentNode;
+        const draggedIndex = Array.from(draggedElementParent.children).indexOf(draggedElement);
+        const targetIndex = Array.from(targetParent.children).indexOf(targetElement);
+
+        if (draggedIndex < targetIndex) {
+          targetParent.insertBefore(draggedElement, targetElement.nextSibling);
+        } else {
+          targetParent.insertBefore(draggedElement, targetElement);
+        }
+
+        updateOrder(targetParent);
+      }
+      draggedElement = null;
+    }
+
+    function updateOrder(parent) {
+      const children = Array.from(parent.children).filter(child => child.classList.contains('image-container'));
+      const parentId = parent.closest('.images-viewer').id;
+      children.forEach((child, index) => {
+        const id = child.id.split('-')[2];
+        const imageList = spritesTilesList;
+        const image = imageList.find(img => img.ID == id);
+        if (image) {
+          image.Order = index + 1;
+        }
+      });
+
+      // Update the order in currentRecord.Values if it's the grid in Tab1
+      if (parentId === 'imagesList1') {
+        currentRecord.Values.forEach((value) => {
+          const image = spritesTilesList.find(img => img.ID == value.ID);
+          if (image) {
+            value.Order = image.Order;
+          }
+        });
+      }
+
+      renderImages('imagesList1', spritesTilesList);
+   
+    }
+
+    function focusImage(event, gridId) {
+      const imageContainers = document.querySelectorAll('.image-container');
+      imageContainers.forEach(container => container.classList.remove('focused'));
+      const clickedContainer = event.currentTarget;
+      //clickedContainer.classList.add('focused');
+      //focusedElementIds[gridId] = clickedContainer.title.split(' - ')[0];
+      triggerFocusEvent(clickedContainer.title.split(' - ')[0]);
+
+      if (gridId === 'imagesList1') {
+        selectedObjectID = parseInt(clickedContainer.title.split(' - ')[0]);
+        currentMatrixID = 1;
+      } else if (gridId === 'imagesList2') {
+        currentMatrixID = parseInt(clickedContainer.title.split(' - ')[0]);
+      }
+
+      // Update the tooltip textboxes with the focused image's ID and Description
+      const descriptionTextbox = document.getElementById(`${gridId}-description`);
+      const idTextbox = document.getElementById(`${gridId}-id`);
+      if (descriptionTextbox && idTextbox) {
+        const [id, description] = clickedContainer.title.split(' - ');
+        descriptionTextbox.value = description;
+        idTextbox.value = id;
+      }
+
+      
+     
+
+    
+
+     
+      const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${selectedObjectID}"]`);
+      if (focusedElement) {
+        document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+        focusedElement.classList.add('focused');
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+ 
+  
+   
+    }
+
+ 
+
+    function triggerFocusEvent(imageId) {
+      const event = new CustomEvent('focusedImageChanged', { detail: { imageId } });
+      document.dispatchEvent(event);
+    }
+
+    
+
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey) {
+        if (event.key === '+' || event.key === '=' || event.key === 'Add') {
+          event.preventDefault();
+          zoomImages(0.1, 'imagesList1');
+        } else if (event.key === '-' || event.key === 'Subtract') {
+          event.preventDefault();
+          zoomImages(-0.1, 'imagesList1');
+        }
+      }
+    });
+
+    var spritesTilesList = [];
+
+
+
+
+
+    const splitter = document.getElementById('splitter');
+    let isDragging = false;
+
+    splitter.addEventListener('mousedown', () => {
+      isDragging = true;
+      document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const container = document.getElementById('editingArea');
+      const leftPanel = document.getElementById('leftPanel');
+      const rightPanel = document.getElementById('rightPanel');
+      const containerRect = container.getBoundingClientRect();
+      const newLeftWidth = e.clientX - containerRect.left;
+      leftPanel.style.width = `${newLeftWidth}px`;
+      rightPanel.style.width = `calc(100% - ${newLeftWidth}px - 5px)`; // Adjust right panel width
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      document.body.style.cursor = 'default';
+    });
+
+    const horizontalSplitter = document.getElementById('horizontalSplitter');
+    let isHorizontalDragging = false;
+
+    horizontalSplitter.addEventListener('mousedown', () => {
+      isHorizontalDragging = true;
+      document.body.style.cursor = 'row-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isHorizontalDragging) return;
+      const leftPanel = document.getElementById('leftPanel');
+      const previewPanel = document.getElementById('previewPanel');
+      const selectionPanel = document.getElementById('selectionPanel');
+      const leftPanelRect = leftPanel.getBoundingClientRect();
+      const newPreviewHeight = e.clientY - leftPanelRect.top;
+      previewPanel.style.height = `${newPreviewHeight}px`;
+      selectionPanel.style.height = `calc(100% - ${newPreviewHeight}px - 5px)`; // Adjust selection panel height
+      renderOrTableGrid(); // Redraw the grid when selectionPanel is resized
+    });
+
+    document.addEventListener('mouseup', () => {
+      isHorizontalDragging = false;
+      document.body.style.cursor = 'default';
+    });
+
+    document.getElementById('detailsOkButton').addEventListener('click', () => {
+      
+      
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'ok' });
+    });
+
+    document.getElementById('detailsCancelButton').addEventListener('click', () => {
+      vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'cancel' });
+    });
+
+
+    
+
+    
+   
+
+   
+
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      const initialColorSquare = document.querySelector(`.color-square[title*="ID ${currentPaletteColorID}"]`);
+      if (initialColorSquare) {
+        initialColorSquare.classList.add('active');
+      }
+    });
+
+    
+
+    function applyPreviewZoom() {
+      const img = document.getElementById('imageCanvas');
+      const zoomLevel = currentRecord.EditingSettings.PreviewZoom || 1;
+      img.style.transform = `scale(${zoomLevel})`;
+    }
+
+   
+
+    document.addEventListener('wheel', (event) => {
+      if (event.ctrlKey) {
+        const img = document.getElementById('imageCanvas');
+        if (event.target === img || event.target.closest('#previewImageCanvas')) {
+          event.preventDefault();
+          const delta = event.deltaY * -0.01;
+          if (!currentRecord.EditingSettings.PreviewZoom) {
+            currentRecord.EditingSettings.PreviewZoom = 1;
+          }
+          currentRecord.EditingSettings.PreviewZoom += delta;
+          if (currentRecord.EditingSettings.PreviewZoom < 0.1) {
+            currentRecord.EditingSettings.PreviewZoom = 0.1;
+          }
+          applyPreviewZoom();
+        }
+      }
+    });
+
+
+
+  
+ 
+
+
+
+   
+
+  
+
+    
+    
+    document.getElementById('repeatTimes').addEventListener('blur', (event) => {
+     
+      const input = event.target;
+      console.log('blur',input);
+      let value = parseInt(input.value, 1);
+      
+      if (isNaN(value) || value < 1) {
+        input.value = 1;
+      } else if (value > 10) {
+        input.value = 10;
+      }
+    });
+
+    function updateAnimationList() {
+      const animationList = document.getElementById('animationList');
+      animationList.innerHTML = currentRecord.Values.map(value => `<option value="${value.ID}">${value.Name}</option>`).join('');
+      document.getElementById('removeAnimationButton').style.display = currentRecord.Values.length > 1 ? 'inline-block' : 'none';
+    }
+
+    document.getElementById('addAnimationButton').addEventListener('click', () => {
+      const newID = Math.max(...currentRecord.Values.map(v => v.ID)) + 1;
+      currentRecord.Values.push({ ID: newID, Name: `Animation #${newID}`, RepeatTimes: 3, Objects: [] });
+      updateAnimationList();
+    });
+
+    document.getElementById('removeAnimationButton').addEventListener('click', () => {
+      openConfirmDialog(() => {
+        const animationList = document.getElementById('animationList');
+        const selectedID = parseInt(animationList.value, 10);
+        currentRecord.Values = currentRecord.Values.filter(value => value.ID !== selectedID);
+        updateAnimationList();
+      });
+    });
+
+    document.getElementById('renameAnimationButton').addEventListener('click', () => {
+      const animationList = document.getElementById('animationList');
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      if (selectedOption) {
+        const renameInput = document.getElementById('renameInput');
+        renameInput.value = selectedOption.Name;
+        renameInput.select();
+        document.getElementById('renameOverlay').style.display = 'flex';
+      }
+    });
+
+    document.getElementById('renameOkButton').addEventListener('click', () => {
+      const animationList = document.getElementById('animationList');
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      const newName = document.getElementById('renameInput').value;
+      if (selectedOption) {
+        selectedOption.Name = newName;
+        updateAnimationList();
+        animationList.value = selectedID; // Ensure the renamed item remains selected
+      }
+      document.getElementById('renameOverlay').style.display = 'none';
+    });
+
+    document.getElementById('renameCancelButton').addEventListener('click', () => {
+      document.getElementById('renameOverlay').style.display = 'none';
+    });
+
+    document.getElementById('repeatTimes').addEventListener('change', (event) => {
+      const input = event.target;
+      let value = parseInt(input.value, 10);
+
+      if (isNaN(value) || value < 1) {
+        input.value = 1;
+      } else if (value > 10) {
+        input.value = 10;
+      }
+
+      // Update RepeatTimes in currentRecord.Values for the selected item in animationList
+      const animationList = document.getElementById('animationList');
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      if (selectedOption) {
+        selectedOption.RepeatTimes = input.value;
+      }
+    });
+
+    document.getElementById('animationList').addEventListener('change', (event) => {
+      const animationList = event.target;
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      const repeatTimesSelect = document.getElementById('repeatTimes');
+      if (selectedOption && selectedOption.RepeatTimes) {
+        repeatTimesSelect.value = selectedOption.RepeatTimes;
+      } else {
+        repeatTimesSelect.value = 3; // Default value
+      }
+      populateGridCanvas();
+      selectedAnimationID = selectedID;
+    });
+
+    function populateGridCanvas() {
+      console.log('populateGridCanvas',selectedAnimationID);
+      const objects = currentRecord.Values.find(value => value.ID === selectedAnimationID).Objects;
+      const gridCanvas = document.getElementById('gridCanvas');
+      const [width, height] = currentChildRecord.Size.split('x').map(Number);
+      let tableHtml = `
+        <div class="grid-table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="color:black">Object ID</th>
+                <th style="color:black">Object name</th>
+                <th style="color:black">Milliseconds</th>
+                <th style="color:black">Preview</th>
+                <th style="color:black">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      if (objects.length === 0) {
+        tableHtml += `
+            <tr>
+              <td colspan="5" style="text-align: center;">Empty</td>
+            </tr>
+        `;
+      } else {
+        objects.forEach((obj, index) => {
+          const imageSrc = getImageFromObject(obj.ObjectID, currentChildRecord, currentPaletteRecord);
+          const description=currentChildRecord.Values.find(v=>v.ID==obj.ObjectID).Name;
+          tableHtml += `
+            <tr>
+              <td style="color:white;background-color:black">${obj.ObjectID}</td>
+              <td style="color:white;background-color:black">${description}</td>
+              <td style="color:white;background-color:black">
+                <input type="number" value="${obj.Milliseconds}" min="200" max="5000" 
+                 onchange="updateMilliseconds(${index}, this.value)" />
+              </td>
+              <td style="color:white;background-color:black"><img src="${imageSrc}" width="${width}" height="${height}" /></td>
+              <td style="color:white;background-color:black"><button onclick="removeObject(${index})">Remove</button></td>
+            </tr>600
+          `;
+        });
+      }
+
+
+
+   
+
+
+      tableHtml += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      gridCanvas.innerHTML = tableHtml;
+      console.log('gridCanvas',gridCanvas.innerHTML);
+    }
+
+    function updateMilliseconds(index, value) {
+      const selectedID = parseInt(document.getElementById('animationList').value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      if (selectedOption) {
+        const milliseconds = Math.max(200, Math.min(5000, parseInt(value, 10)));
+        selectedOption.Objects[index].Milliseconds = milliseconds;
+      }
+      populateGridCanvas();
+    }
+
+    function removeObject(index) {
+      const selectedID = parseInt(document.getElementById('animationList').value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      if (selectedOption) {
+        selectedOption.Objects.splice(index, 1);
+        populateGridCanvas();
+      }
+    }
+
+    document.getElementById('animationList').addEventListener('input', (event) => {
+      const animationList = event.target;
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      if (selectedOption) {
+        selectedOption.Description = animationList.options[animationList.selectedIndex].text;
+      }
+    });
+
+
+
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey) {
+        const activeTab = document.querySelector('.tabcontent[style*="display: block"]');
+        const gridId = activeTab.id === 'Tab1' ? 'imagesList1' : 'imagesList2';
+        const gridCanvas = document.getElementById('gridCanvas');
+        const gridEditorContainer = document.getElementById('gridContainer');
+        if (event.target.closest(`#${gridId}`) || event.target.closest(`#${activeTab.id}`) || event.target === gridCanvas || event.target.closest(`#gridContainer`)) {
+          event.preventDefault();
+          const targetGridId = (event.target === gridCanvas || event.target.closest(`#gridContainer`)) ? 'gridCanvas' : gridId;
+          if (event.key === '+' || event.key === '=' || event.key === 'Add') {
+            zoomImages(1, targetGridId);
+          } else if (event.key === '-' || event.key === 'Subtract') {
+            zoomImages(-1, targetGridId);
+          }
+        }
+      }
+    });
+
+    document.getElementById('playLabel').addEventListener('click', async () => {
+      const playLabel = document.getElementById('playLabel');
+      const imageCanvas = document.getElementById('imageCanvas');
+      const gridCanvas = document.getElementById('gridCanvas');
+      const animationList = document.getElementById('animationList');
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+  
+      if (!selectedOption) return;
+  
+      playLabel.style.display = 'none';
+      imageCanvas.style.display = 'block';
+      gridCanvas.style.pointerEvents = 'none'; // Disable interactions
+  
+      for (let repeat = 0; repeat < selectedOption.RepeatTimes; repeat++) {
+        for (const obj of selectedOption.Objects.sort((a, b) => a.Order - b.Order)) {
+          const imageSrc = getImageFromObject(obj.ObjectID, currentChildRecord, currentPaletteRecord);
+          imageCanvas.src = imageSrc;
+          await new Promise(resolve => setTimeout(resolve, obj.Milliseconds));
+        }
+      }
+  
+      imageCanvas.style.display = 'none';
+      playLabel.style.display = 'block';
+      gridCanvas.style.pointerEvents = 'auto'; // Enable interactions
+    });
+
+    document.getElementById('previousRecordButton').addEventListener('click', () => {
+      const animationList = document.getElementById('animationList');
+      if (animationList.selectedIndex > 0) {
+        animationList.selectedIndex -= 1;
+        animationList.dispatchEvent(new Event('change'));
+      }
+    });
+
+    document.getElementById('nextRecordButton').addEventListener('click', () => {
+      const animationList = document.getElementById('animationList');
+      if (animationList.selectedIndex < animationList.options.length - 1) {
+        animationList.selectedIndex += 1;
+        animationList.dispatchEvent(new Event('change'));
+      }
+    });
+
+    document.getElementById('animationList').addEventListener('change', (event) => {
+      console.log ("animationList change");
+      const animationList = event.target;
+      const selectedID = parseInt(animationList.value, 10);
+      const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
+      const repeatTimesSelect = document.getElementById('repeatTimes');
+      if (selectedOption && selectedOption.RepeatTimes) {
+        repeatTimesSelect.value = selectedOption.RepeatTimes;
+      } else {
+        repeatTimesSelect.value = 3; // Default value
+      }
+      populateGridCanvas();
+      selectedAnimationID = selectedID;
+    });
+  </script>
+</body>
+</html>
