@@ -634,17 +634,24 @@
     let copiedCells = [];
     let isPasting = false;
     let pasteStart = null;
-
     let undoStack = [];
     let redoStack = [];
 
     let isFillMode = false;
+    let openedObjectID = -1;
 
     window.addEventListener('message', event => {
       const message = event.data;
       switch (message.command) {
         case 'loadDetails':
+          currentDataStore=message.dataStore;
+          if(message.objectID!=null){
+            openedObjectID=message.objectID;
+          }
+
+     
           loadDetails(message.record, message.childRecord, message.bufferedCopiedCells, message.dataStore);
+         
           break;
       }
     });
@@ -658,7 +665,8 @@
       copiedCells = bufferedCopiedCells || [];
       currentRecord = record;
       currentChildRecord = childRecord;
-      currentObjectID = -1;
+      currentObjectID =openedObjectID;
+
       currentMatrixID = (record.Type === "Sprites" && record.Subtype === "Type 2") ? 1 : -1;
       const titleArea = document.getElementById('titleArea');
       titleArea.textContent = `${record.Type}: ${record.ID} - ${record.Description}`;
@@ -721,8 +729,13 @@
       if (!currentRecord.EditingSettings.PreviewZoom) {
         currentRecord.EditingSettings.PreviewZoom = 1;
       }
-      if (!currentRecord.EditingSettings.GridEditorZoom) {
-        currentRecord.EditingSettings.GridEditorZoom = 1;
+
+      
+      const maxZoom = currentRecord.Type === "Images" ? 0.3 : 3;
+        
+
+      if (!currentRecord.EditingSettings.GridEditorZoom || currentRecord.EditingSettings.GridEditorZoom>maxZoom) {
+        currentRecord.EditingSettings.GridEditorZoom = maxZoom;
       }
       if (record.Values == null || record.Values.length == 0) {
         record.Values = [];
@@ -782,12 +795,17 @@
       });
       resizeObserver.observe(selectionPanel);
 
-      // Set focus to the first image in Tab1 if it exists
-      const firstImageContainer = document.querySelector('#imagesList1 .image-container');
-      if (firstImageContainer) {
-        focusImage({ currentTarget: firstImageContainer }, 'imagesList1');
+     
+      
+      if(currentObjectID>0){
+        focusOnObjectInTab1(currentObjectID);
       }
-
+      else{
+        const firstImageContainer = document.querySelector('#imagesList1 .image-container');
+        if (firstImageContainer) {
+          focusImage({ currentTarget: firstImageContainer }, 'imagesList1');
+        }
+      }
 
       renderColorSelector(childRecord.Values);
       const canvas = document.getElementById('gridCanvas');
@@ -816,7 +834,7 @@
       const checkboxContainer = document.createElement('div');
       checkboxContainer.className = 'checkbox-container';
       checkboxContainer.innerHTML = `
-        <label><input type="checkbox" id="toggleGrid"> Show Grid</label>
+        <label id="toggleGridLabel"><input type="checkbox" id="toggleGrid"> Show Grid</label>
         <label id="toggleBlockSeparatorContainer"><input type="checkbox" id="toggleBlockSeparator"> Show 8x8 Block Separator</label>
          <label class="context-menu-info-label">CTRL+LeftMouse click on object canvas for to display context menu</label>
       `;
@@ -831,6 +849,7 @@
         document.getElementById('toggleBlockSeparatorContainer').style.display = 'none';
       }
 
+     
       // Initialize grid and block separator visibility from EditingSettings
       if (!record.EditingSettings) {
         record.EditingSettings = {};
@@ -847,8 +866,12 @@
           const row = Math.floor(y / cellSize);
           toggleOrOption(row);
         });
-
-      updateGridCanvas();
+        if (record.Type === "Images") {
+          console.log("Images");
+          document.getElementById('toggleGrid').style.display = 'none';
+          document.getElementById('toggleGridLabel').style.display = 'none';
+        }
+        updateGridCanvas();
       
     }
     async function updateTab1Grid(record,childRecord) {
@@ -862,6 +885,7 @@
           Order: pattern.Order
         });
       });
+      renderImages('imagesList1', objectsList);
     }
     async function updateGridCanvas() {
       const canvas = document.getElementById('gridCanvas');
@@ -871,7 +895,9 @@
       canvas.width = width * cellSize;
       canvas.height = height * cellSize;
       let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
-
+      if(currentRecord.Type === "Images"){
+        currentRecord.EditingSettings.ShowGrid=false;
+      }
       // Create checkerboard pattern proportional to zoom level
       const checkerboardCanvas = document.createElement('canvas');
       const checkerSize = Math.max(8 * (currentRecord.EditingSettings.GridEditorZoom || 1), 1);
@@ -1059,6 +1085,13 @@
       updateTab2Grid();
       updateTab1Grid(currentRecord,currentChildRecord);
       updatePreviewImage();
+      setTimeout(() => {
+        
+        renderImages('imagesList1', objectsList);
+        updateTab1Grid(currentRecord,currentChildRecord);
+     
+      }, 150); // Adjust the delay as needed
+      
     }
 
     function fill(matrix, row, col, targetColor, newColor) {
@@ -1122,6 +1155,7 @@
     }
 
     function handleMouseUp() {
+
       isDrawing = false;
       isErasing = false;
 
@@ -1695,7 +1729,7 @@
 
       imagesGrid.innerHTML = images.map((image, index) => `
         <div class="image-container ${id === 'imagesList2' ? 'no-drag' : ''}" id="image-${id}-${image.ID}" title="${image.ID} - ${image.Description}" style="width: ${imageWidth + 3}px; height: ${imageHeight + 3}px; background-color: ${backgroundColor}; border-color: ${borderColor};" draggable="${id === 'imagesList1'}" ondragstart="drag(event)" ondragover="allowDrop(event)" ondrop="drop(event)" onclick="focusImage(event, '${id}')">
-          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};">
+          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};" ondblclick="openDetails(${image.ID})">
         </div>
       `).join('');
 
@@ -1725,6 +1759,19 @@
         }
       }
       
+    }
+
+    function openDetails(tileID) {
+      vscode.postMessage({
+        command: "openDetailsView",
+        record: currentChildRecord,
+        childRecord: currentPaletteRecord,
+        spriteTilePaletteRecord: null,
+        dataStore: currentDataStore,
+        objectID: tileID
+      });
+      document.getElementById('mapsContainer').style.display = 'none';
+      document.getElementById('detailsContainer').style.display = 'block';
     }
 
     function getBackgroundColor(gridId) {
@@ -1869,9 +1916,16 @@
       } else if (gridId === 'gridCanvas') {
 
         currentRecord.EditingSettings.GridEditorZoom += (delta > 0 ? 1 : -1) * zoomIncrement;
-        if (currentRecord.EditingSettings.GridEditorZoom < 1.5) {
-          currentRecord.EditingSettings.GridEditorZoom = 1.5;
+        const minZoom = currentRecord.Type === "Images" ? 0.1 : 1.5;
+        const maxZoom = currentRecord.Type === "Images" ? 2 : 3;
+        if (currentRecord.EditingSettings.GridEditorZoom < minZoom) {
+          currentRecord.EditingSettings.GridEditorZoom = minZoom;
         }
+        
+        if (currentRecord.EditingSettings.GridEditorZoom > maxZoom) {
+          currentRecord.EditingSettings.GridEditorZoom = maxZoom;
+        }
+        updateGridCanvas(); 
         updateGridCanvas();
       }
     }
@@ -2119,8 +2173,7 @@
     });
 
     document.getElementById('detailsOkButton').addEventListener('click', () => {
-      
-      
+      vscode.postMessage({ command: 'updateRecord', record: currentRecord });
       vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'ok' });
     });
 
@@ -3041,6 +3094,15 @@
 
     document.getElementById('gridCanvas').addEventListener('contextmenu', openContextMenu);
     document.getElementById('gridContainer').addEventListener('contextmenu', openContextMenu);
+
+    function focusOnObjectInTab1(objectID) {
+      const focusedElement = document.querySelector(`#imagesList1 .image-container[title^="${objectID}"]`);
+      if (focusedElement) {
+        document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
+        focusedElement.classList.add('focused');
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
 
     // ...existing code...
   </script>

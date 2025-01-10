@@ -114,6 +114,12 @@
       padding: 10px;
       border-top: 1px solid #ccc;
     }
+    .imports-buttons {
+      display: flex;
+      justify-content: flex-end;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+    }
     .main-detail-panel {
       flex: 1;
       display: flex;
@@ -186,7 +192,10 @@
       display: none;
       justify-content: center;
       align-items: center;
-      z-index: 9999;
+      z-index: 9998; /* Default z-index for overlays */
+    }
+    .color-picker-overlay {
+      z-index: 9999; /* Higher z-index for color picker overlay */
     }
     .dialog {
       background: #fff;
@@ -213,6 +222,9 @@
     .form-group div {
       flex: 1;
     }
+    .form-group input[type="file"] {
+      flex: 1;
+    }
     .color-picker-dialog {
       display: flex;
       align-items: center;
@@ -222,6 +234,141 @@
     .color-picker-dialog input,
     .color-picker-dialog button {
       margin: 0 5px;
+    }
+    .import-dialog {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start; /* Align items to the top left */
+      justify-content: flex-start;
+      width: 900px; /* Fixed width */
+      height: 700px; /* Fixed height */
+      position: relative; /* Add relative positioning */
+    }
+    .import-dialog .header,
+    .import-dialog .tabs,
+    .import-dialog .form-group {
+      align-self: flex-start; /* Align individual elements to the left */
+    }
+    .import-dialog .form-group {
+      justify-content: flex-start; /* Align form group contents to the left */
+    }
+    .import-dialog .form-group label {
+      text-align: left; /* Align labels to the left */
+      color: black; /* Set label font color to black */
+    }
+    .import-dialog .form-group input,
+    .import-dialog .form-group select {
+      text-align: left; /* Align input and select contents to the left */
+    }
+    .import-dialog .preview-panel {
+      display: block; /* Always visible */
+      flex: 1;
+      background-color: #f9f9f9;
+      height: 100%; /* Adjust height to match all fields */
+      width: 100%; /* Adjust width to fill the column */
+    }
+    .import-dialog .selected-image {
+      display: block;
+      flex: 1;
+      background-color: #f9f9f9;
+      height: calc(100% - 300px); /* Adjust height to fill available space */
+      width: 100%; /* Adjust width to fill the column */
+      border: 1px solid #ccc; /* Add border */
+      overflow: hidden; /* Hide overflow to enable dragging */
+      position: relative; /* Ensure positioning context for the image */
+    }
+    .selected-image img {
+      image-rendering: pixelated; /* Pixelate the image */
+      width: 100%; /* Ensure the image fits the container */
+      height: auto;
+      transform-origin: center; /* Ensure zooming happens from the center */
+      position: absolute; /* Allow the image to be positioned absolutely */
+      top: 0;
+      left: 0;
+      cursor: grab; /* Change cursor to indicate draggable */
+    }
+    .selected-image img:active {
+      cursor: grabbing; /* Change cursor when dragging */
+    }
+    .import-dialog .selected-image {
+      display: block;
+      flex: 1;
+      background-color: #f9f9f9;
+      height: calc(100% - 300px); /* Adjust height to fill available space */
+      width: 100%; /* Adjust width to fill the column */
+      border: 1px solid #ccc; /* Add border */
+      overflow: auto; /* Enable scrolling */
+    }
+    .import-dialog .form-group-container {
+      display: flex;
+      width: 100%;
+    }
+    .import-dialog .form-group-container .form-group {
+      flex: 1;
+    }
+    .import-dialog .header {
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    .tab-button {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: #ddd;
+      margin: 0 5px;
+    }
+    .tab-button.active {
+      background: #bbb;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .transparent-colors {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+    .transparent-colors input {
+      width: 110px; /* Set width to 100px */
+    }
+    .form-actions {
+      position: absolute; /* Position absolutely */
+      bottom: 20px; /* 20px from the bottom */
+      right: 20px; /* 20px from the right */
+      display: flex;
+      justify-content: flex-end; /* Align OK and Cancel buttons to the right */
+      width: auto;
+    }
+    .preview-container {
+      position: relative;
+      height: 100%;
+    }
+    .preview-image {
+      width: 100%;
+      height: auto;
+      background-color: #ffffff;
+      cursor: grab;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform-origin: center;
+    }
+    .background-color-button {
+      position: absolute;
+      bottom: 0;
+      width: 235px;
+      text-align: center;
+      background-color: #f0f0f0;
+      border-top: 1px solid #ccc;
+      padding: 5px 0;
     }
   </style>
 </head>
@@ -261,7 +408,7 @@
 </div>
 
   <!-- Overlay: colorPicker -->
-  <div id="colorPickerOverlay" class="overlay">
+  <div id="colorPickerOverlay" class="overlay color-picker-overlay">
     <div id="colorPickerDialog" class="dialog color-picker-dialog">
       <label>Choose color:</label>
       <input type="color" id="colorPickerInput" />
@@ -287,7 +434,178 @@
     </div>
   </div>
 
+  <!-- Overlay: import dialog -->
+  <div id="importDialogOverlay" class="overlay">
+    <div id="importDialog" class="dialog import-dialog">
+      <div class="header" id="importDialogHeader"></div>
+      <div class="tabs">
+        <button class="tab-button active" data-tab="generalTab">General</button>
+        <button class="tab-button" data-tab="transparentColorsTab">Transparent colors</button>
+      </div>
+      <table style="width: 100%; height: calc(100% - 150px);">
+        <tr>
+          <td style="vertical-align: top; width: 70%; height: 100%;">
+            <div id="generalTab" class="tab-content active" style="height: 100%;">
+              <div id="import-specs">
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="objectColumns">Items quantity (Columns/Rows):</label>
+                    <input type="number" id="objectColumns" value="0" />
+                    <span>x</span>
+                    <input type="number" id="objectRows" value="0" />
+                  </div>
+                </div>
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="gapX">Gap (X/Y):</label>
+                    <input type="number" id="gapX" value="0" />
+                    <span>x</span>
+                    <input type="number" id="gapY" value="0" />
+                  </div>
+                </div>
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="posX">Start position (X/Y):</label>
+                    <input type="number" id="posX" value="0" />
+                    <span>x</span>
+                    <input type="number" id="posY" value="0" />
+                  </div>
+                </div>
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="paletteSelect">Palette:</label>
+                    <select id="paletteSelect">
+                      <option value="areaonlycolors">Create a new palette (only selected area colors)</option>
+                      <option value="allimagecolors">Create a new palette (all image colors)</option>
+                      <!-- Palette options will be populated dynamically -->
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="minColorsDistance">Color min. distancy (only for new palettes):</label>
+                    <input type="number" id="minColorsDistance" value="1" min="1" max="255" />
+                  </div>
+                </div>
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="importFile">Select PNG file:</label>
+                    <input type="file" id="importFile" accept=".png, .bmp" />
+                  </div>
+                </div>
+              </div>
+              <div class="selected-image" style="height: 340px;" id="selectedImagePanel">
+                <img id="selectedImage" src="" />
+              </div>
+            </div>
+            <div id="transparentColorsTab" class="tab-content">
+              <table class="transparent-colors">
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+                <tr>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                  <td><input type="text" maxlength="7" /></td>
+                </tr>
+              </table>
+            </div>
+          </td>
+          <td style="vertical-align: top; width: 30%;">
+            <div class="preview-panel" id="importedItemsPanel"></div>
+          </td>
+        </tr>
+      </table>
+      <div class="form-actions">
+        <button id="importPreview" style="display: none;">Preview</button>
+        <button id="importImport" style="display: none;">Import</button>
+        <button id="importClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay: validation message -->
+  <div id="validationOverlay" class="overlay">
+    <div id="validationDialog" class="dialog">
+      <p id="validationMessage"></p>
+      <button id="validationOk">OK</button>
+    </div>
+  </div>
+
+  <!-- Overlay: invalid image message -->
+  <div id="invalidImageOverlay" class="overlay">
+    <div id="invalidImageDialog" class="dialog">
+      <p>Invalid image</p>
+      <button id="invalidImageOk">OK</button>
+    </div>
+  </div>
+
 <script src="./utils.js"></script>
+<script src="./colorThief.js"></script>
 <script>
 
 /* ======================================================================================
@@ -297,7 +615,15 @@ let editModeActive = false; // if true => hide buttons in grid
 let dataStore = [];
 let tempPaletteColors = []; // Global variable to store temporary colors
 const vscode = acquireVsCodeApi(); // Acquire VS Code API once
+let importSpecs = {};
+let croppedImages = []; // Global array to store cropped images
+let importPreviewImages = [];
+let importPreviewPalette = [];
+let importPaletteID = -1;
+let importPalette = []; // Global variable to store the palette used for import
 
+let croppedImportImages = []; 
+let noCroppedImportImages = [];
 /* ======================================================================================
    MOCK DATA
    ====================================================================================== */
@@ -400,7 +726,9 @@ function renderGrid(typeFilter, subtypeFilter) {
   const theadRow = document.getElementById("gridHeader");
   tbody.innerHTML = "";
   theadRow.innerHTML = "";
-
+  if(dataStore===null){
+    return;
+  }
   let columns = [];
   switch (typeFilter) {
     case "Sprites":
@@ -603,8 +931,17 @@ function renderGrid(typeFilter, subtypeFilter) {
       });
       tdActions.appendChild(removeBtn);
 
+      // Import button
+      if ((row.Type === "Sprites" && row.Subtype=="Type 1") || row.Type === "Tiles" || row.Type === "Fonts" || row.Type === "Images" ) {
+        let importBtn = document.createElement("button");
+        importBtn.className = "action-button imports-button";
+        importBtn.textContent = "Import...";
+        importBtn.dataset.recordId = row.ID;
+        tdActions.appendChild(importBtn);
+      }
+
       // Details button (except Palettes)
-      if (row.Type !== "Palettes") {
+      if (row.Type !== "Palettes" && row.ChildObjectID !== "-1") {
         let detailsBtn = document.createElement("button");
         detailsBtn.className = "action-button details-button";
         detailsBtn.textContent = "Collection...";
@@ -856,7 +1193,7 @@ function openEditDialog(existingRow, createNew) {
       if (createNew && currentType !== "Palettes" && currentType !== "Animations") {
           
         tempRow.EditingSettings={
-          "GridEditorZoom":1.25,
+          "GridEditorZoom":currentType === "Images"?0.1:1.25,
           "ObjectsGridZoom":1.25,
           "ObjectsGridBackgroundColor":"#010101",
           "PatternsGridZoom":1,
@@ -941,8 +1278,12 @@ function checkSizeConstraints(type, subtype, row) {
     }
   }
   else if (type === "Images") {
-     if (wNum > 512 || hNum > 512 || wNum < 100 || hNum < 100) {
-      openInfoDialog("Images size must be in [100..512]", null);
+     if (wNum > 256 || wNum < 30 ) {
+      openInfoDialog("Images width size must be in [30..256]", null);
+      return false;
+    }
+    if (hNum > 212 ||hNum < 30) {
+      openInfoDialog("Images height size must be in [30..212]", null);
       return false;
     }
 
@@ -988,7 +1329,7 @@ function getFieldsForType(type, row, createNew) {
       label: "Palette: ",
       name: "ChildObjectID",
       type: "combobox",
-      options: getPaletteOptions(),
+      options: getPaletteOptions(createNew || (row.Values && row.Values.length === 0)),
       disabled: false
     });
   }
@@ -1020,7 +1361,7 @@ function getFieldsForType(type, row, createNew) {
       label: "Palette: ",
       name: "ChildObjectID",
       type: "combobox",
-      options: getPaletteOptions(),
+      options: getPaletteOptions(createNew || (row.Values && row.Values.length === 0)),
       disabled: false
     });
   }
@@ -1077,7 +1418,7 @@ function getFieldsForType(type, row, createNew) {
       label: "Palette: ",
       name: "ChildObjectID",
       type: "combobox",
-      options: getPaletteOptions(),
+      options: getPaletteOptions(createNew || (row.Values && row.Values.length === 0)),
       disabled: false
     });
   }
@@ -1102,7 +1443,7 @@ function getFieldsForType(type, row, createNew) {
       label: "Palette: ",
       name: "ChildObjectID",
       type: "combobox",
-      options: getPaletteOptions(),
+      options: getPaletteOptions(createNew || (row.Values && row.Values.length === 0)),
       disabled: false
     });
   }
@@ -1126,9 +1467,13 @@ function getFieldsForType(type, row, createNew) {
    COMBO UTILS
    ====================================================================================== */
 
-function getPaletteOptions() {
+function getPaletteOptions(includeNotSelected = false) {
   let list = dataStore.filter(r => r.Type === "Palettes");
-  return list.map(r => ({ value: r.ID, label: r.Description }));
+  let options = list.map(r => ({ value: r.ID, label: r.Description }));
+  if (includeNotSelected) {
+    options.unshift({ value: -1, label: "Not selected" });
+  }
+  return options;
 }
 
 function getTileOptions() {
@@ -1296,9 +1641,13 @@ function getColorAtMousePosition(x, y) {
   const context = canvas.getContext("2d");
   canvas.width = 1;
   canvas.height = 1;
-  context.drawImage(document.elementFromPoint(x, y), -x, -y);
-  const pixel = context.getImageData(0, 0, 1, 1).data;
-  return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+  const element = document.elementFromPoint(x, y);
+  if (element && (element.tagName === "IMG" || element.tagName === "CANVAS")) {
+    context.drawImage(element, -x, -y);
+    const pixel = context.getImageData(0, 0, 1, 1).data;
+    return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+  }
+  return null;
 }
 
 function focusOnColorSquare() {
@@ -1370,13 +1719,13 @@ function computeBrightness(hex) {
   return (0.299*r + 0.587*g + 0.114*b);
 }
 
-function rgbToHex(rgb) {
-  let hex = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-  function hexify(x) {
-    return ("0" + parseInt(x).toString(16)).slice(-2).toUpperCase();
-  }
-  return "#" + hexify(hex[1]) + hexify(hex[2]) + hexify(hex[3]);
-}
+//function rgbToHex(rgb) {
+//  let hex = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+//  function hexify(x) {
+//    return ("0" + parseInt(x).toString(16)).slice(-2).toUpperCase();
+//  }
+//  return "#" + hexify(hex[1]) + hexify(hex[2]) + hexify(hex[3]);
+//}
 
 /* ======================================================================================
    EVENT LISTENERS (on load)
@@ -1440,9 +1789,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("detailsOkButton").addEventListener("click", closeDetailsView);
-  document.getElementById("detailsCancelButton").addEventListener("click", closeDetailsView);
-
+  document.getElementById("dataGrid").addEventListener("click", (e) => {
+    if (e.target.classList.contains("imports-button")) {
+      const recordId = e.target.dataset.recordId;
+      const currentType = document.getElementById("typeSelect").value;
+      let currentSubtype = "";
+      if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+        currentSubtype = document.getElementById("subtypeSelect").value;
+      }
+      const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
+      openImportDialog(record);
+    }
+  });
+ 
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && (e.key === "+" || e.key === "-" || e.key === "=")) {
       e.preventDefault();
@@ -1468,32 +1827,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const splitter = document.getElementById("splitter");
-  splitter.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    document.addEventListener("mousemove", resizePanes);
-    document.addEventListener("mouseup", () => {
-      document.removeEventListener("mousemove", resizePanes);
-    });
-  });
+  //const splitter = document.getElementById("splitter");
 
-  function resizePanes(e) {
-    const leftPane = document.querySelector(".images-panel");
-    const rightPane = document.querySelector(".drawing-panel");
-    const totalWidth = leftPane.offsetWidth + rightPane.offsetWidth;
-    const leftWidth = e.clientX / totalWidth * 100;
-    leftPane.style.flex = `0 0 ${leftWidth}%`;
-    rightPane.style.flex = `0 0 ${100 - leftWidth}%`;
-  }
+  //splitter.addEventListener("mousedown", (e) => {
+  //  e.preventDefault();
+  //  document.addEventListener("mousemove", resizePanes);
+  //  document.addEventListener("mouseup", () => {
+  //    document.removeEventListener("mousemove", resizePanes);
+  //  });
+  //});
 
-  const splitterHorizontal = document.getElementById("splitterHorizontal");
-  splitterHorizontal.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    document.addEventListener("mousemove", resizeHorizontalPanes);
-    document.addEventListener("mouseup", () => {
-      document.removeEventListener("mousemove", resizeHorizontalPanes);
-    });
-  });
+ //function resizePanes(e) {
+ //  const leftPane = document.querySelector(".images-panel");
+ //  const rightPane = document.querySelector(".drawing-panel");
+ //  const totalWidth = leftPane.offsetWidth + rightPane.offsetWidth;
+ //  const leftWidth = e.clientX / totalWidth * 100;
+ //  leftPane.style.flex = `0 0 ${leftWidth}%`;
+ //  rightPane.style.flex = `0 0 ${100 - leftWidth}%`;
+ //}
+
+  //const splitterHorizontal = document.getElementById("splitterHorizontal");
+ //splitterHorizontal.addEventListener("mousedown", (e) => {
+ //  e.preventDefault();
+ //  document.addEventListener("mousemove", resizeHorizontalPanes);
+ //  document.addEventListener("mouseup", () => {
+ //    document.removeEventListener("mousemove", resizeHorizontalPanes);
+ //  });
+ //});
 
   function resizeHorizontalPanes(e) {
     const topPane = document.querySelector(".image-grid-panel");
@@ -1539,6 +1899,452 @@ function openDetailsView(record) {
 function closeDetailsView() {
   document.getElementById("mainPanel").classList.add("active");
   document.getElementById("detailsPanel").classList.remove("active");
+}
+
+
+// ==========
+// ColorThief
+// ==========
+
+function getDominantColorsFromDataUrl(base64Image, distancy,croppedImage,transparentColors,size){
+    
+    const colorThief = new ColorThief();
+    const img = new Image();
+   
+    img.onload = () => {
+     
+        var palette = colorThief.getPalette(img, 15, 0); 
+        
+        palette = filterSimilarColors(palette, distancy);
+        const hexPalette = palette.map(color => {
+            return ('#' + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1)).toUpperCase();
+        });
+      
+        importItemsFromImage(hexPalette,croppedImage,transparentColors,size);
+    };
+
+
+    console.log("QUI3");
+    var quality = 10;
+    img.src = base64Image; 
+    console.log(base64Image);
+};
+
+function colorDistance(color1, color2) {
+    const rDiff = color1[0] - color2[0];
+    const gDiff = color1[1] - color2[1];
+    const bDiff = color1[2] - color2[2];
+    return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
+}
+
+
+function filterSimilarColors(colors, minDistance = 50) {
+    const filteredColors = [];
+
+    colors.forEach(color => {
+        let isSimilar = false;
+
+        for (const filteredColor of filteredColors) {
+            if (colorDistance(color, filteredColor) < minDistance) {
+                isSimilar = true;
+                break;
+            }
+        }
+
+        if (!isSimilar) {
+            filteredColors.push(color);
+        }
+    });
+
+    return filteredColors;
+}
+function updateCroppedImageDescription(id, newDescription) {
+  const image = croppedImages.find(img => img.id === id);
+  if (image) {
+    image.description = newDescription;
+  }
+}
+function highlightRow(row) {
+  document.querySelectorAll(".imported-item-row").forEach(r => {
+    r.style.border = "none";
+  });
+  row.style.border = "3px solid red";
+}
+
+function importItemsFromImage(hexPalette, croppedImage, transparentColors, size) {
+  console.log(hexPalette);
+  importPaletteID = -1; // Reset importPaletteID
+  //importHexPalette = hexPalette; // Save the palette to the global variable
+  const [itemWidth, itemHeight] = size;
+  const objectColumns = parseInt(document.getElementById("objectColumns").value, 10);
+  const objectRows = parseInt(document.getElementById("objectRows").value, 10);
+  const gapX = parseInt(document.getElementById("gapX").value, 10);
+  const gapY = parseInt(document.getElementById("gapY").value, 10);
+  const posX = parseInt(document.getElementById("posX").value, 10);
+  const posY = parseInt(document.getElementById("posY").value, 10);
+
+  
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const img = new Image();
+  
+  img.onload = () => {
+    console.log("Src Image:", img.src);
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Create an array to store all pixels that have transparency
+    const transparentPixels = [];
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0) {
+        data[i] = 1;
+        data[i + 1] = 1;
+        data[i + 2] = 1;
+      }
+      if (data[i + 3] < 255) {
+        transparentPixels.push([data[i], data[i + 1], data[i + 2], data[i + 3]]);
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    // 2. Ensure #000000 is the first element of hexPalette if it exists, otherwise add it
+    hexPalette = hexPalette.filter(color => color !== "#000000");
+    hexPalette.unshift("#000000");
+    if (!hexPalette.includes("#000000")) {
+      hexPalette.unshift("#000000");
+    }
+
+    // 3. Ensure hexPalette has at least 16 elements
+    while (hexPalette.length < 16) {
+      hexPalette.push("#FFFFFF");
+    }
+
+    // Check if a palette from records is selected
+    const selectedPaletteID = document.getElementById("paletteSelect").value;
+    if (selectedPaletteID !== "areaonlycolors" && selectedPaletteID !== "allimagecolors") {
+      const selectedPalette = dataStore.find(p => p.Type === "Palettes" && p.ID.toString() === selectedPaletteID);
+      if (selectedPalette) {
+        hexPalette = selectedPalette.Values.map(c => c.color.toUpperCase());
+        importPaletteID = selectedPalette.ID;
+      }
+    }
+    //else{
+    //  const selectedPalette = dataStore.find(p => p.Type === "Palettes");
+    //  hexPalette = selectedPalette.Values.map(c => c.color.toUpperCase());
+    //  console.log("hexPalette",hexPalette);
+    //}
+    // 5. Replace pixels in croppedImage with colors in transparentColors to fully transparent
+    //for (let i = 0; i < data.length; i += 4) {
+    //  const pixelColor = `#${((1 << 24) + (data[i] << 16) + (data[i + 1] << 8) + data[i + 2]).toString(16).slice(1).toUpperCase()}`;
+    //  if (transparentColors.includes(pixelColor)) {
+    //    data[i + 3] = 0; // Set alpha channel to 0 (fully transparent)
+    //    if (!transparentPixels.includes([data[i], data[i + 1], data[i + 2], data[i + 3]])) {
+    //      transparentPixels.push([data[i], data[i + 1], data[i + 2], data[i + 3]]);
+    //    }
+    //  }
+    //}
+    //ctx.putImageData(imageData, 0, 0);
+    importPalette=hexPalette;
+    // 6. Generate a new base64 image from croppedImage using the closest color in hexPalette
+    for (let i = 0; i < data.length; i += 4) {
+      const pixelColor = [data[i], data[i + 1], data[i + 2]];
+      const closestColor = getClosestColor(pixelColor, hexPalette);
+      const [r, g, b] = closestColor;
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    const newBase64Image = canvas.toDataURL();
+    console.log("New Base64 Image:", newBase64Image);
+
+    // Create cropped images and fill the importedItemsPanel
+    const importedItemsPanel = document.getElementById("importedItemsPanel");
+    importedItemsPanel.innerHTML = ""; // Clear previous content
+    importPreviewImages = []; // Clear previous cropped images
+
+    // Create a table to hold the color squares and the grid
+    const table = document.createElement("table");
+    table.style.width = "100%";
+    table.style.height = "300px";
+
+    // Create the first row for color squares
+    const colorRow = document.createElement("tr");
+    const colorCell = document.createElement("td");
+    colorCell.style.height = "auto";
+    const colorSquaresContainer = document.createElement("div");
+    colorSquaresContainer.className = "color-squares-container";
+    colorSquaresContainer.style.textAlign = "center";
+    hexPalette.forEach((color, index) => {
+      const colorSquare = document.createElement("span");
+      colorSquare.className = "color-square";
+      colorSquare.style.backgroundColor = color;
+      colorSquare.title = `RGB: ${color}\nMSX: ${rgbToMsx(color)}`;
+      if (index === 0) {
+        colorSquare.classList.add("checkerboard");
+        colorSquare.style.cursor = "default";
+      } else {
+        colorSquare.addEventListener("dblclick", () => {
+          if (index > 0 && !transparentColors.includes(color) && transparentColors.length < 16) {
+            const emptyInput = document.querySelector('.transparent-colors input[value=""]');
+            if (emptyInput) {
+              emptyInput.value = color;
+            }
+          }
+        });
+      }
+
+      const labelSpan = document.createElement("span");
+      labelSpan.textContent = index.toString(16).toUpperCase();
+      const isDark = computeBrightness(color) < 128;
+      labelSpan.style.color = isDark ? "#fff" : "#000";
+      if (index === 0) {
+        labelSpan.style.color = "#444";
+      }
+      colorSquare.appendChild(labelSpan);
+      colorSquaresContainer.appendChild(colorSquare);
+    });
+    colorCell.style.height = "30px";
+    colorCell.appendChild(colorSquaresContainer);
+    colorRow.appendChild(colorCell);
+    table.appendChild(colorRow);
+
+    // Create the second row for the grid
+    const gridRow = document.createElement("tr");
+    const gridCell = document.createElement("td");
+    gridCell.style.height = "100%";
+    gridCell.style.overflowY = "auto"; // Enable vertical scrolling
+    gridCell.style.display = "block"; // Ensure the cell takes the full height
+
+    let nextId = getNextIDForType(document.getElementById("typeSelect").value);
+
+    for (let row = 0; row < objectRows; row++) {
+      for (let col = 0; col < objectColumns; col++) {
+        const x = posX + col * (itemWidth + gapX);
+        const y = posY + row * (itemHeight + gapY);
+
+        const itemCanvas = document.createElement("canvas");
+        itemCanvas.width = itemWidth;
+        itemCanvas.height = itemHeight;
+        const itemCtx = itemCanvas.getContext("2d");
+        itemCtx.drawImage(canvas, x, y, itemWidth, itemHeight, 0, 0, itemWidth, itemHeight);
+        const itemBase64 = itemCanvas.toDataURL();
+
+        // Store the cropped image in the global array
+        importPreviewImages.push({
+          id: nextId,
+          base64: itemBase64,
+          description: `${document.getElementById("typeSelect").value.slice(0, -1)} #${nextId}`
+        });
+
+        const itemRow = document.createElement("div");
+        itemRow.className = "imported-item-row";
+        itemRow.style.display = "flex"; // Ensure all elements stay on the same row
+        itemRow.style.alignItems = "center"; // Vertically center the elements
+        itemRow.style.cursor = "pointer"; // Make the entire row clickable
+        itemRow.addEventListener("click", () => {
+          const previewImage = document.getElementById("previewImage");
+          previewImage.src = itemBase64;
+          highlightRow(itemRow);
+        });
+
+        const idCell = document.createElement("div");
+        idCell.className = "imported-item-cell";
+        idCell.style.fontWeight = "bold"; // Make ID bold
+        idCell.style.width = "25px"; // Set ID width to 25px
+        idCell.textContent = nextId++;
+
+        const imageCell = document.createElement("div");
+        imageCell.className = "imported-item-cell";
+        const imgElement = document.createElement("img");
+        imgElement.src = itemBase64;
+        imgElement.style.width = "30px"; // Set image width to 30px
+        imgElement.style.height = "30px"; // Set image height to 30px
+        imgElement.style.imageRendering = "pixelated"; // Ensure the image is pixelated
+        imageCell.appendChild(imgElement);
+
+        const nameCell = document.createElement("div");
+        nameCell.className = "imported-item-cell";
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.maxLength = 255;
+        nameInput.value = `${document.getElementById("typeSelect").value.slice(0, -1)} #${idCell.textContent}`;
+        nameInput.title = nameInput.value; // Set initial tooltip
+        nameInput.addEventListener("input", (e) => {
+          nameInput.title = e.target.value; // Update tooltip on input change
+          updateCroppedImageDescription(idCell.textContent, e.target.value);
+        });
+        nameCell.appendChild(nameInput);
+
+        const removeCell = document.createElement("div");
+        removeCell.className = "imported-item-cell";
+        const removeButton = document.createElement("button");
+        removeButton.textContent = "X";
+        removeButton.title = "Remove";
+        removeButton.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent row click event
+          removePreviewRow(itemRow, idCell.textContent);
+        });
+        removeCell.appendChild(removeButton);
+
+        itemRow.appendChild(idCell);
+        itemRow.appendChild(imageCell);
+        itemRow.appendChild(nameCell);
+        itemRow.appendChild(removeCell);
+
+        gridCell.appendChild(itemRow);
+      }
+    }
+    gridRow.style.height = "250px";
+    gridRow.appendChild(gridCell);
+    table.appendChild(gridRow);
+
+    // Create the third row for the image preview
+    const previewRow = document.createElement("tr");
+    const previewCell = document.createElement("td");
+    previewCell.style.height = "100%";
+    previewCell.style.overflow = "auto"; // Enable scrolling
+    previewCell.style.display = "block"; // Ensure the cell takes the full height
+
+    const previewContainer = document.createElement("div");
+    previewContainer.className = "preview-container";
+
+    const previewImage = document.createElement("img");
+    previewImage.id = "previewImage";
+    previewImage.className = "preview-image";
+    previewImage.style.width = "100%"; // Ensure the image fits the container
+    previewImage.style.height = "160px";
+    previewImage.style.backgroundColor = "#ffffff"; // Default background color
+    previewImage.style.cursor = "grab"; // Change cursor to indicate draggable
+    previewImage.style.imageRendering = "pixelated"; // Ensure the image is pixelated
+    previewImage.addEventListener("wheel", (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        let scale = parseFloat(previewImage.style.transform.replace("scale(", "").replace(")", "")) || 1;
+        scale += e.deltaY < 0 ? 0.1 : -0.1;
+        scale = Math.max(0.1, scale);
+        previewImage.style.transform = `scale(${scale})`;
+      }
+    });
+
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    previewImage.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      startX = e.pageX - previewCell.offsetLeft;
+      startY = e.pageY - previewCell.offsetTop;
+      scrollLeft = previewCell.scrollLeft;
+      scrollTop = previewCell.scrollTop;
+      previewImage.style.cursor = "grabbing";
+    });
+
+    previewImage.addEventListener("mouseleave", () => {
+      isDragging = false;
+      previewImage.style.cursor = "grab";
+    });
+
+    previewImage.addEventListener("mouseup", () => {
+      isDragging = false;
+      previewImage.style.cursor = "grab";
+    });
+
+    previewImage.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - previewCell.offsetLeft;
+      const y = e.pageY - previewCell.offsetTop;
+      const walkX = (x - startX) * 1; // Adjust the multiplier for faster/slower scrolling
+      const walkY = (y - startY) * 1; // Adjust the multiplier for faster/slower scrolling
+      previewCell.scrollLeft = scrollLeft - walkX;
+      previewCell.scrollTop = scrollTop - walkY;
+    });
+
+    const backgroundColorButton = document.createElement("button");
+    backgroundColorButton.className = "background-color-button";
+    backgroundColorButton.textContent = "Background color";
+    backgroundColorButton.addEventListener("click", () => {
+      
+      openColorPickerDialog(previewImage.style.backgroundColor, (newColor) => {
+        previewImage.style.backgroundColor = newColor;
+      });
+    });
+
+    previewContainer.appendChild(previewImage);
+    previewContainer.appendChild(backgroundColorButton);
+    previewCell.style.height = "200px";
+    previewCell.style.paddingTop = "25px";
+    previewCell.appendChild(previewContainer);
+    previewRow.appendChild(previewCell);
+    table.appendChild(previewRow);
+
+    importedItemsPanel.appendChild(table);
+
+    // Show the import button
+    document.getElementById("importImport").style.display = "inline-block";
+
+    // Focus on the first row and display its image in the preview
+    const firstRow = document.querySelector(".imported-item-row");
+    if (firstRow) {
+      highlightRow(firstRow);
+      const firstImage = firstRow.querySelector("img");
+      if (firstImage) {
+        previewImage.src = firstImage.src;
+      }
+    }
+  };
+  
+  img.src = croppedImage;
+}
+
+function removePreviewRow(row, id) {
+  const index = importPreviewImages.findIndex(img => img.id === id);
+  if (index !== -1) {
+    importPreviewImages.splice(index, 1);
+    row.remove();
+    const rows = document.querySelectorAll(".imported-item-row");
+    if (rows.length > 0) {
+      const newFocusRow = rows[Math.max(0, index - 1)];
+      highlightRow(newFocusRow);
+    } else {
+      // Hide the import button if no rows are left
+      document.getElementById("importImport").style.display = "none";
+    }
+  }
+}
+
+function getClosestColor(pixelColor, hexPalette) {
+  let minDistance = Infinity;
+  let closestColor = [255, 255, 255];
+  hexPalette.forEach(hex => {
+    const color = hexToRgb(hex);
+    const distance = colorDistance(pixelColor, color);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestColor = color;
+    }
+  });
+
+  return closestColor;
+}
+
+//function hexToRgb(hex) {
+//  const bigint = parseInt(hex.slice(1), 16);
+//  const r = (bigint >> 16) & 255;
+//  const g = (bigint >> 8) & 255;
+//  const b = bigint & 255;
+//  return [r, g, b];
+//}
+
+function colorDistance(color1, color2) {
+  const rDiff = color1[0] - color2[0];
+  const gDiff = color1[1] - color2[1];
+  const bDiff = color1[2] - color2[2];
+  return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
 }
 
 /* ======================================================================================
@@ -1657,7 +2463,547 @@ function applyFilters(type, subtype) {
   }
 }
 
+function openImportDialog(record) {
+  const overlay = document.getElementById("importDialogOverlay");
+  const paletteSelect = document.getElementById("paletteSelect");
+  const header = document.getElementById("importDialogHeader");
 
+  // Clear all fields
+  document.getElementById("objectColumns").value = 1;
+  document.getElementById("objectRows").value = 1;
+  document.getElementById("gapX").value = 0;
+  document.getElementById("gapY").value = 0;
+  document.getElementById("posX").value = 0;
+  document.getElementById("posY").value = 0;
+  document.getElementById("minColorsDistance").value = 1;
+  document.getElementById("importFile").value = "";
+  document.getElementById("selectedImage").src = "";
+  document.getElementById("importPreview").style.display = "none";
+  document.getElementById("importImport").style.display = "none";
+
+  // Remove color squares and grid if they exist
+  const colorSquaresContainer = document.querySelector(".color-squares-container");
+  if (colorSquaresContainer) {
+    colorSquaresContainer.remove();
+  }
+  const importedItemsPanel = document.getElementById("importedItemsPanel");
+  importedItemsPanel.innerHTML = "";
+
+  // Set header text
+  const recordType = record.Type.slice(0, -1); // Remove last character
+  header.textContent = `${recordType} ${record.Description} (${record.Size})`;
+
+  paletteSelect.innerHTML = '<option value="areaonlycolors">Create a new palette (only selected area colors)</option><option value="allimagecolors">Create a new palette (all image colors)</option>';
+  getPaletteOptions().forEach(opt => {
+    let option = document.createElement("option");
+    option.value = opt.value;
+    option.textContent = opt.label;
+    paletteSelect.appendChild(option);
+  });
+
+  // Check the number of items in the record
+  if (record.Values && record.Values.length > 0) {
+    // Set the palette to the record's palette and disable the combo
+    paletteSelect.value = record.ChildObjectID;
+    paletteSelect.disabled = true;
+  } else {
+    // Enable the combo for palette selection
+    paletteSelect.disabled = false;
+  }
+
+  overlay.style.display = "flex";
+  overlay.dataset.recordId = record.ID; // Store the record ID in the overlay for later use
+}
+
+document.getElementById("importFile").addEventListener("change", () => {
+  const recordId = document.getElementById("importDialogOverlay").dataset.recordId;
+  const currentType = document.getElementById("typeSelect").value;
+  let currentSubtype = "";
+  if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+    currentSubtype = document.getElementById("subtypeSelect").value;
+  }
+  const record = dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10));
+  const importFile = document.getElementById("importFile").files[0];
+  const paletteOption = document.getElementById("paletteSelect").value;
+
+  // Hide import button and clear previous preview
+  document.getElementById("importPreview").style.display = "none";
+  document.getElementById("importImport").style.display = "none";
+  document.getElementById("selectedImage").src = "";
+  const importedItemsPanel = document.getElementById("importedItemsPanel");
+  importedItemsPanel.innerHTML = "";
+
+  if (!importFile || (importFile.type !== "image/png" && importFile.type !== "image/bmp")) {
+    openValidationDialog("Please select a valid PNG or BMP file.");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const base64Image = event.target.result;
+    if (!isValidImage(base64Image)) {
+      openValidationDialog("Invalid image format. Please select a valid PNG or BMP file.");
+      document.getElementById("selectedImage").src = "";
+      document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+      return;
+    }
+
+    const img = new Image();
+    img.onload = function() {
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const [recordWidth, recordHeight] = record.Size.split("x").map(Number);
+      const totalWidth = (recordWidth * importSpecs.objectColumns) + parseInt(importSpecs.posX, 10);
+      const totalHeight = (recordHeight * importSpecs.objectRows) + parseInt(importSpecs.posY, 10);
+
+      if (imgWidth < totalWidth || imgHeight < totalHeight) {
+        openValidationDialog("Total width or height set for extracting items is incompatible with the image.");
+        document.getElementById("selectedImage").src = "";
+        document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+        return;
+      }
+
+      // Display the image in the selected-image panel
+      const selectedImage = document.getElementById("selectedImage");
+      selectedImage.src = base64Image;
+
+      // Proceed with preview
+      document.getElementById("importedItemsPanel").style.display = "grid"; // Show the preview panel
+      document.getElementById("importPreview").style.display = "inline-block"; // Show the Preview button
+      document.getElementById("importImport").style.display = "none"; // Hide the Import button initially
+      vscode.postMessage({
+        command: 'validateImportSpecs',
+        data: importSpecs,
+        record: record,
+        paletteOption: paletteOption
+      });
+    };
+    img.onerror = function() {
+      openValidationDialog("Invalid image format. Please select a valid PNG or BMP file.");
+      document.getElementById("selectedImage").src = "";
+      document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+    };
+    img.src = base64Image;
+  };
+  reader.readAsDataURL(importFile);
+});
+
+document.getElementById("importPreview").addEventListener("click", () => {
+ 
+  const recordId = document.getElementById("importDialogOverlay").dataset.recordId;
+  const currentType = document.getElementById("typeSelect").value;
+  let currentSubtype = "";
+  if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+    currentSubtype = document.getElementById("subtypeSelect").value;
+  }
+  const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
+  console.log("RECORD ID",document.getElementById("importDialogOverlay").dataset);
+  const importFile = document.getElementById("importFile").files[0];
+  const paletteOption = document.getElementById("paletteSelect").value;
+  const minColorsDistance = parseInt(document.getElementById("minColorsDistance").value, 10);
+
+  if (!importFile || (importFile.type !== "image/png" && importFile.type !== "image/bmp")) {
+    openValidationDialog("Please select a valid PNG or BMP file.");
+    return;
+  }
+
+  const objectColumns = parseInt(document.getElementById("objectColumns").value, 10);
+  const objectRows = parseInt(document.getElementById("objectRows").value, 10);
+  const gapX = parseInt(document.getElementById("gapX").value, 10);
+  const gapY = parseInt(document.getElementById("gapY").value, 10);
+  const posX = parseInt(document.getElementById("posX").value, 10);
+  const posY = parseInt(document.getElementById("posY").value, 10);
+
+  // Validate number of columns and rows
+  if (objectColumns < 1 || objectRows < 1) {
+    openValidationDialog("Impostare il numero di righe e colonne di items da importare");
+    document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+    return;
+  }
+
+  // Validate color distance if creating a new palette
+  if ((paletteOption === "areaonlycolors" || paletteOption === "allimagecolors") && (minColorsDistance < 1 || minColorsDistance > 255)) {
+    openValidationDialog("Invalid color distance");
+    document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+    return;
+  }
+
+  const [recordWidth, recordHeight] = record.Size.split("x").map(Number);
+  console.log("RECORD WIDTH",recordWidth);
+  console.log("RECORD HEIGHT",recordHeight);
+ console.log("RECORD",record);
+  const totalWidth = posX + (recordWidth * objectColumns) + (gapX * (objectColumns - 1));
+  const totalHeight = posY + (recordHeight * objectRows) + (gapY * (objectRows - 1));
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+
+    const base64Image = event.target.result;
+    if (!isValidImage(base64Image)) {
+      openValidationDialog("Invalid image format. Please select a valid PNG or BMP file.");
+      document.getElementById("selectedImage").src = "";
+      document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+      return;
+    }
+
+    const img = new Image();
+    img.onload = function() {
+  
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+
+      // Validate image dimensions
+      if (imgWidth < totalWidth || imgHeight < totalHeight) {
+        openValidationDialog("Dimensione immagine incompatibile con i parametri specificati");
+        document.getElementById("selectedImage").src = "";
+        document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+        return;
+      }
+
+      // Create a canvas to draw the cropped image
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = totalWidth;
+      canvas.height = totalHeight;
+      ctx.drawImage(img, posX, posY, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
+      const croppedImage = canvas.toDataURL();
+      //console.log("CANVAS",canvas);
+      //console.log("CROPPED IMAGE",croppedImage);
+      // Get transparent colors
+      const transparentColors = Array.from(document.querySelectorAll('.transparent-colors input'))
+        .map(input => input.value.toUpperCase())
+        .filter(color => color);
+
+      // Define hexPalette
+      let hexPalette = [];
+
+      // If a new palette needs to be created
+      if (paletteOption === "areaonlycolors" || paletteOption === "allimagecolors") {
+        //console.log("IMAGE TO USE",paletteOption,croppedImage,base64Image);
+        const imageToUse = paletteOption === "areaonlycolors" ? croppedImage : base64Image;
+        //console.log("IMAGE TO USE",imageToUse); 
+        croppedImportImages=croppedImage;
+        noCroppedImportImages=imageToUse;
+
+        processImageForTransparency(croppedImportImages, (processedImage) => {
+          croppedImportImages=processedImage;
+
+          processImageForTransparency(noCroppedImportImages, (processedImage) => {
+            noCroppedImportImages=processedImage;
+            getDominantColorsFromDataUrl(noCroppedImportImages, minColorsDistance, croppedImportImages, transparentColors, [recordWidth, recordHeight]);
+        });
+        });
+
+
+
+
+
+
+
+
+
+        
+        //getDominantColorsFromDataUrl(imageToUse, minColorsDistance, croppedImage, transparentColors, [recordWidth, recordHeight]);
+      } else {
+        const selectedPalette = dataStore.find(p => p.Type === "Palettes" && p.ID.toString() === paletteOption);
+        if (selectedPalette) {
+          hexPalette = selectedPalette.Values.map(c => c.color.toUpperCase());
+          importItemsFromImage(hexPalette, croppedImage, transparentColors, [recordWidth, recordHeight]);
+        }
+      }
+     
+      // Show the import button after successful preview
+      document.getElementById("importImport").style.display = "inline-block";
+    };
+
+
+
+
+
+
+
+    img.onerror = function() {
+      openValidationDialog("Invalid image format. Please select a valid PNG or BMP file.");
+      document.getElementById("selectedImage").src = "";
+      document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
+    };
+    img.src = base64Image;
+  };
+  reader.readAsDataURL(importFile);
+});
+
+document.getElementById("importClose").addEventListener("click", () => {
+  document.getElementById("importDialogOverlay").style.display = "none";
+  document.getElementById("selectedImage").src = "";
+  document.getElementById("importPreview").style.display = "none";
+  document.getElementById("importImport").style.display = "none";
+});
+
+
+
+function processImageForTransparency(imageSrc, callback) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Get transparent colors from the grid
+    const transparentColors = Array.from(document.querySelectorAll('.transparent-colors input'))
+      .map(input => input.value.toUpperCase())
+      .filter(color => color);
+
+    // Replace transparent pixels with #000000 at 100% transparency
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 255) {
+        data[i] = 0;
+        data[i + 1] = 0;
+        data[i + 2] = 0;
+        data[i + 3] = 0;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    // Replace opaque #000000 pixels with #010101
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0 && data[i + 3] === 255) {
+        data[i] = 1;
+        data[i + 1] = 1;
+        data[i + 2] = 1;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    // Replace colors present in transparentColors with #000000 transparent
+    for (let i = 0; i < data.length; i += 4) {
+      const pixelColor = `#${((1 << 24) + (data[i] << 16) + (data[i + 1] << 8) + data[i + 2]).toString(16).slice(1).toUpperCase()}`;
+      if (transparentColors.includes(pixelColor)) {
+        data[i] = 0;
+        data[i + 1] = 0;
+        data[i + 2] = 0;
+        data[i + 3] = 0;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const processedImage = canvas.toDataURL();
+    callback(processedImage);
+  };
+  img.src = imageSrc;
+}
+
+function openValidationDialog(message) {
+  const overlay = document.getElementById("validationOverlay");
+  const msg = document.getElementById("validationMessage");
+  msg.textContent = message;
+  overlay.style.display = "flex";
+}
+
+document.getElementById("validationOk").addEventListener("click", () => {
+  document.getElementById("validationOverlay").style.display = "none";
+});
+
+function isValidImage(base64Image) {
+  const pngHeader = "data:image/png;base64,";
+  const bmpHeader = "data:image/bmp;base64,";
+  return base64Image.startsWith(pngHeader) || base64Image.startsWith(bmpHeader);
+}
+
+document.querySelectorAll('.tab-button').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    button.classList.add('active');
+    document.getElementById(button.dataset.tab).classList.add('active');
+  });
+});
+
+
+
+document.querySelectorAll('.transparent-colors input').forEach(input => {
+  input.addEventListener('blur', () => {
+    if (!/^#[0-9A-F]{6}$/i.test(input.value)) {
+      input.value = '';
+    }
+  });
+});
+
+document.getElementById("selectedImagePanel").addEventListener("wheel", (e) => {
+  if (e.ctrlKey) {
+    e.preventDefault();
+    const img = document.getElementById("selectedImage");
+    let scale = parseFloat(img.style.transform.replace("scale(", "").replace(")", "")) || 1;
+    scale += e.deltaY < 0 ? 0.1 : -0.1;
+    scale = Math.max(0.1, scale);
+    img.style.transform = `scale(${scale})`;
+  }
+});
+
+let isDragging = false;
+let startX, startY, scrollLeft, scrollTop;
+
+const selectedImagePanel = document.getElementById("selectedImagePanel");
+const selectedImage = document.getElementById("selectedImage");
+
+selectedImagePanel.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  startX = e.pageX - selectedImagePanel.offsetLeft;
+  startY = e.pageY - selectedImagePanel.offsetTop;
+  scrollLeft = selectedImagePanel.scrollLeft;
+  scrollTop = selectedImagePanel.scrollTop;
+  selectedImage.style.cursor = "grabbing";
+});
+
+selectedImagePanel.addEventListener("mouseleave", () => {
+  isDragging = false;
+  selectedImage.style.cursor = "grab";
+});
+
+selectedImagePanel.addEventListener("mouseup", () => {
+  isDragging = false;
+  selectedImage.style.cursor = "grab";
+});
+
+selectedImagePanel.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  e.preventDefault();
+  const x = e.pageX - selectedImagePanel.offsetLeft;
+  const y = e.pageY - selectedImagePanel.offsetTop;
+  const walkX = (x - startX) * 1; // Adjust the multiplier for faster/slower scrolling
+  const walkY = (y - startY) * 1; // Adjust the multiplier for faster/slower scrolling
+  selectedImagePanel.scrollLeft = scrollLeft - walkX;
+  selectedImagePanel.scrollTop = scrollTop - walkY;
+});
+
+document.getElementById("importImport").addEventListener("click", () => {
+  openConfirmDialog(() => {
+    const recordId = document.getElementById("importDialogOverlay").dataset.recordId;
+    const currentType = document.getElementById("typeSelect").value;
+    let currentSubtype = "";
+    if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+      currentSubtype = document.getElementById("subtypeSelect").value;
+    }
+    const record = dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10));
+    const type = document.getElementById("typeSelect").value;
+    const newItems = [];
+
+    importPreviewImages.forEach((image, index) => {
+      const item = {
+        ID: index + 1,
+        Name: image.description,
+        Order: getNextOrder(record.Values),
+        Matrices: [{
+          ID: 1,
+          Values: [],
+          OrOptions: Array.from({ length: parseInt(record.Size.split("x")[1], 10) }, (_, rowIndex) => ({
+            Row: rowIndex,
+            Status: false
+          }))
+        }]
+      };
+
+      const img = new Image();
+      img.src = image.base64;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        console.log("PALETTE",importPalette);
+        for (let y = 0; y < canvas.height; y++) {
+          for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            const pixelColor = [data[i], data[i + 1], data[i + 2]];
+            const colorIndex = importPalette.findIndex(c => {
+              const [r, g, b] = hexToRgb(c);
+              return r === pixelColor[0] && g === pixelColor[1] && b === pixelColor[2];
+            });
+            if (colorIndex === -1) {
+              console.log("PIXEL COLOR NOT FOUND", pixelColor); 
+            }
+            item.Matrices[0].Values.push({
+              PosX: x,
+              PosY: y,
+              Value: colorIndex.toString(16).toUpperCase()
+            });
+          }
+        }
+
+        newItems.push(item);
+
+        if (newItems.length === importPreviewImages.length) {
+          if (importPaletteID === -1) {
+            // Ensure the new palette has 16 colors
+            const newPaletteColors = importPalette.map((color, index) => ({
+              id: index.toString(16).toUpperCase(),
+              color: color
+            }));
+            newPaletteColors[0] = { id: "0", color: "#000000" };
+            while (newPaletteColors.length < 16) {
+              newPaletteColors.push({ id: newPaletteColors.length.toString(16).toUpperCase(), color: "#FFFFFF" });
+            }
+
+            const newPalette = {
+              ID: getNextIDForType("Palettes"),
+              Type: "Palettes",
+              Description: `Palette for ${type} ${record.Description}`,
+              Subtype: "",
+              Values: newPaletteColors
+            };
+            dataStore.push(newPalette);
+            record.ChildObjectID = newPalette.ID;
+          } else {
+            record.ChildObjectID = importPaletteID;
+          }
+
+          record.Values = newItems;
+          saveDataStore();
+          document.getElementById("importDialogOverlay").style.display = "none";
+          updateGrid();
+        }
+      };
+    });
+  });
+});
+
+function getNextOrder(values) {
+  if (!values || values.length === 0) return 1;
+  return Math.max(...values.map(v => v.Order)) + 1;
+}
+
+function openConfirmDialog(onConfirm) {
+  const overlay = document.getElementById("confirmOverlay");
+  const msg = document.getElementById("confirmDialog").querySelector("p");
+  const okBtn = document.getElementById("confirmOk");
+  const cancelBtn = document.getElementById("confirmCancel");
+
+  msg.textContent = "Are you sure to import these items?";
+  overlay.style.display = "flex";
+  overlay.style.zIndex = "9999"; // Ensure the z-index is the same as the color picker dialog
+
+  const onOk = () => {
+    closeConfirm();
+    onConfirm();
+  };
+  const onCancel = () => {
+    closeConfirm();
+  };
+  const closeConfirm = () => {
+    overlay.style.display = "none";
+    okBtn.removeEventListener("click", onOk);
+    cancelBtn.removeEventListener("click", onCancel);
+  };
+
+  okBtn.addEventListener("click", onOk);
+  cancelBtn.addEventListener("click", onCancel);
+}
 
 </script>
 </body>

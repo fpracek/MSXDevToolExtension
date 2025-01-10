@@ -39,6 +39,7 @@ interface DataObject {
 
 let mainPanel: vscode.WebviewPanel | null = null;
 let detailsPanel: vscode.WebviewPanel | null = null;
+let targetedDetailsPanel: vscode.WebviewPanel | null = null;
 let selectedCells: any[] = []; // Variable to store selected cells
 
 export function activate(context: vscode.ExtensionContext) {
@@ -50,6 +51,11 @@ export function activate(context: vscode.ExtensionContext) {
   if (detailsPanel) {
     detailsPanel.dispose();
     detailsPanel = null;
+  }
+
+  if (targetedDetailsPanel) {
+    targetedDetailsPanel.dispose();
+    targetedDetailsPanel = null;
   }
 
   let loadedData: DataObject[] | null = null;
@@ -142,6 +148,17 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
 
   mainPanel.onDidDispose(() => {
     mainPanel = null;
+    targetedDetailsPanel?.dispose();
+    targetedDetailsPanel = null;
+    detailsPanel?.dispose();
+    detailsPanel = null;
+  });
+
+  detailsPanel?.onDidDispose(() => {
+    targetedDetailsPanel?.dispose();
+    targetedDetailsPanel = null;
+    detailsPanel?.dispose();
+    detailsPanel = null;
   });
 
   // Path to the HTML file in media/webview.html
@@ -155,11 +172,21 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
     `<script src="${scriptUri}">`
   );
 
+  const scriptThiefUri = mainPanel.webview.asWebviewUri(
+    vscode.Uri.joinPath(context.extensionUri, "media", "colorThief.js")
+  );
+  console.log(scriptThiefUri);
+  htmlContent = htmlContent.replace(
+    /<script\s+src=["'].*colorThief\.js["']\s*>/,
+    `<script src="${scriptThiefUri}">`
+  );
+
   // Set the HTML content in the panel
   mainPanel.webview.html = htmlContent;
 
   // Send the loaded data to the webview
   mainPanel.webview.onDidReceiveMessage(message => {
+
     switch (message.command) {
       case 'saveDataStore':
         saveDataToFile(message.data);
@@ -217,9 +244,18 @@ function openDetailsView(context: vscode.ExtensionContext, record: DataObject, c
       retainContextWhenHidden: true
     }
   );
+  detailsPanel.onDidChangeViewState((e) => {
+   if(detailsPanel?.active){
+    targetedDetailsPanel?.dispose();
+     targetedDetailsPanel = null;
 
+   }
+      
+  });
   detailsPanel.onDidDispose(() => {
     detailsPanel = null;
+    targetedDetailsPanel?.dispose();
+    targetedDetailsPanel = null;
   });
 
   // Path to the HTML file in media/details.html
@@ -247,7 +283,16 @@ function openDetailsView(context: vscode.ExtensionContext, record: DataObject, c
   });
 
   detailsPanel.webview.onDidReceiveMessage(message => {
+
     switch (message.command) {
+      case 'openTargetedDetailsView':
+        if(targetedDetailsPanel===null){
+          openTargetedDetailsView(context, message.record, message.childRecord,null,"Details",message.dataStore,message.spriteTilePaletteRecord);
+        }
+        else{
+          targetedDetailsPanel.reveal(vscode.ViewColumn.One);
+        }
+        return;
       case 'closeDetailsView':
         if (detailsPanel) {
           detailsPanel.dispose();
@@ -262,26 +307,140 @@ function openDetailsView(context: vscode.ExtensionContext, record: DataObject, c
   });
 }
 
-function closeDetailsView(context: vscode.ExtensionContext, record: DataObject, action: string) {
-  if (detailsPanel) {
-    detailsPanel.dispose();
-    detailsPanel = null;
+
+function openTargetedDetailsView(context: vscode.ExtensionContext, record: DataObject, childRecord: DataObject | null, spriteTilePaletteRecord: DataObject | null, type: string | null, dataStore:[] | null, objectID:any) {
+  //if (detailsPanel) {
+  //  detailsPanel.dispose();
+  //  detailsPanel = null;
+  //}
+  let internalPanelID="msxTergetedDetailsView";
+  
+
+  let panelName="details.html";
+  
+
+  targetedDetailsPanel = vscode.window.createWebviewPanel(
+    internalPanelID,     // Internal identifier
+    'MSX Objects editor',   // Visible title
+    vscode.ViewColumn.One, // Column to show the webview in
+    {
+      enableScripts: true, // Allow scripts to run in the webview
+      retainContextWhenHidden: true
+    }
+  );
+
+  targetedDetailsPanel.onDidDispose(() => {
+    targetedDetailsPanel = null;
+  });
+
+  // Path to the HTML file in media/details.html
+  const htmlPath = path.join(context.extensionPath, 'media', panelName);
+  let htmlContent = fs.readFileSync(htmlPath, 'utf8');
+
+  // Path to the utils.js file
+  const utilsPath = vscode.Uri.file(path.join(context.extensionPath, 'media', 'utils.js'));
+  const utilsUri = targetedDetailsPanel.webview.asWebviewUri(utilsPath);
+
+  // Replace the placeholder with the actual URI
+  htmlContent = htmlContent.replace('src="./utils.js"', `src="${utilsUri}"`);
+
+  // Set the HTML content in the panel
+  targetedDetailsPanel.webview.html = htmlContent;
+
+  console.log(objectID);
+  // Send the data to the webview
+  targetedDetailsPanel.webview.postMessage({
+    command: 'loadDetails',
+    record: record,
+    childRecord: childRecord,
+    bufferedCopiedCells: selectedCells,
+    spriteTilePaletteRecord: spriteTilePaletteRecord,
+    dataStore: dataStore,
+    objectID:objectID
+  });
+  targetedDetailsPanel.onDidDispose(() => {
+    detailsPanel?.reveal(vscode.ViewColumn.One);
+  });
+  targetedDetailsPanel.webview.onDidReceiveMessage(message => {
+
+    switch (message.command) {
+      case 'updateRecord':
+        updateDataRecordInFile(message.record);
+        return;
+        
+      case 'closeDetailsView':
+        
+        closeDetailsView(context, message.record, message.action,true);
+        
+        detailsPanel?.webview.postMessage({
+          command: 'returnFromTargetedDetails',
+          record: message.record,
+          action: message.action,
+          data: message.record
+        });
+        
+          targetedDetailsPanel?.dispose();
+        
+        return;
+      case 'updateSelectedCells':
+        selectedCells = message.selectedCells;
+        console.log('Selected cells updated:', selectedCells);
+        return;
+    }
+  });
+}
+
+
+function loadDataFromFile(){
+  var data = "";
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (workspaceFolders && workspaceFolders.length > 0) {
+    const workspacePath = workspaceFolders[0].uri.fsPath;
+    const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+    const dataPath = path.join(folderPath, 'Objects.json');
+    data = fs.readFileSync(dataPath, 'utf8');
   }
+  return data;
+}
+function updateDataRecordInFile(record: DataObject){
+  const data=loadDataFromFile();
+   
+
+    if (data!="") {
+      const loadedData = JSON.parse(data);
+      if (loadedData) {
+        const index: number = loadedData.findIndex(
+          (item: DataObject) => item.Type === record.Type && item.Subtype === record.Subtype && item.ID === record.ID
+        );
+        if (index !== -1) {
+          loadedData[index].EditingSettings = record.EditingSettings;
+          loadedData[index].Values = record.Values;
+          saveDataToFile(JSON.stringify(loadedData));
+        }
+      }
+    }
+}
+function closeDetailsView(context: vscode.ExtensionContext, record: DataObject, action: string, fromTargetedDetailPanel=false) {
+  if(!fromTargetedDetailPanel){
+    if (detailsPanel) {
+      detailsPanel.dispose();
+      detailsPanel = null;
+    }
+  }
+ 
   
   if (action !== 'unload') {
     initializeMainPanel(context, null);
 
-    // Reload data from file
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (workspaceFolders && workspaceFolders.length > 0) {
-      const workspacePath = workspaceFolders[0].uri.fsPath;
-      const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
-      const dataPath = path.join(folderPath, 'Objects.json');
-      const data = fs.readFileSync(dataPath, 'utf8');
-      const loadedData = JSON.parse(data);
 
+    const data=loadDataFromFile();
+   
+
+    if (data!="") {
+      const loadedData = JSON.parse(data);
+      
       // Send the data to the webview
-      if(mainPanel!=null){
+      if(mainPanel!=null && !fromTargetedDetailPanel){
 
 
         if (loadedData) {
@@ -299,13 +458,15 @@ function closeDetailsView(context: vscode.ExtensionContext, record: DataObject, 
     
         console.log('Data reloaded from file:', loadedData);
 
-
-        mainPanel.webview.postMessage({
-          command: 'returnFromDetails',
-          record: record,
-          action: action,
-          data: JSON.stringify(loadedData)
-        });
+        if(!fromTargetedDetailPanel){
+          mainPanel.webview.postMessage({
+            command: 'returnFromDetails',
+            record: record,
+            action: action,
+            data: JSON.stringify(loadedData)
+          });
+        }
+       
       }
       
     }
@@ -378,3 +539,6 @@ function getDefaultMSXColors(isMSX2: boolean) {
 export function deactivate() {
   // Questa funzione viene chiamata quando l'estensione viene disattivata
 }
+
+
+

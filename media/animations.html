@@ -700,6 +700,13 @@
     window.addEventListener('message', event => {
       const message = event.data;
       switch (message.command) {
+        case 'returnFromTargetedDetails':
+          if(message.action==="ok"){
+            currentChildRecord=message.record;
+            updateTab1Grid();
+            populateGridCanvas();
+          }
+          break;
         case 'loadDetails':
           loadDetails(message.record, message.childRecord, message.bufferedCopiedCells, message.spriteTilePaletteRecord,message.dataStore);
           break;
@@ -847,6 +854,7 @@
           Order: spriteTile.Order
         });
       });
+      renderImages('imagesList1', spritesTilesList);
     }
  
 
@@ -954,7 +962,7 @@
 
       imagesGrid.innerHTML = images.map((image, index) => `
         <div class="image-container ${id === 'imagesList2' ? 'no-drag' : ''}" id="image-${id}-${image.ID}" title="${image.ID} - ${image.Description}" style="width: ${imageWidth + 3}px; height: ${imageHeight + 3}px; background-color: ${backgroundColor}; border-color: ${borderColor};" draggable="${id === 'imagesList1'}" ondragstart="drag(event)" ondragover="allowDrop(event)" ondrop="drop(event)" onclick="focusImage(event, '${id}')">
-          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};">
+          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};" ondblclick="openObjectDetails(${image.ID})">
         </div>
       `).join('');
 
@@ -973,7 +981,16 @@
       
       
     }
-
+    function openObjectDetails(id) {
+      console.log("ID",id);
+      vscode.postMessage({
+        command: "openTargetedDetailsView",
+        record: currentChildRecord,
+        childRecord: currentPaletteRecord,
+        spriteTilePaletteRecord: id
+      });
+  
+    }
     function getBackgroundColor(gridId) {
       if (currentRecord.EditingSettings) {
         if (gridId === 'imagesList1' && currentRecord.EditingSettings.ObjectsGridBackgroundColor) {
@@ -1323,7 +1340,7 @@
     document.getElementById('repeatTimes').addEventListener('blur', (event) => {
      
       const input = event.target;
-      console.log('blur',input);
+
       let value = parseInt(input.value, 1);
       
       if (isNaN(value) || value < 1) {
@@ -1417,7 +1434,6 @@
     });
 
     function populateGridCanvas() {
-      console.log('populateGridCanvas',selectedAnimationID);
       const objects = currentRecord.Values.find(value => value.ID === selectedAnimationID).Objects;
       const gridCanvas = document.getElementById('gridCanvas');
       const [width, height] = currentChildRecord.Size.split('x').map(Number);
@@ -1473,7 +1489,6 @@
       `;
 
       gridCanvas.innerHTML = tableHtml;
-      console.log('gridCanvas',gridCanvas.innerHTML);
     }
 
     function updateMilliseconds(index, value) {

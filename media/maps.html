@@ -689,10 +689,18 @@
     let redoStack = [];
     let selectedTileID = 0; // Global variable for selected tile ID
     let isMouseDown = false; // Track mouse down state
+    let checkerboardCanvas;
 
     window.addEventListener('message', event => {
       const message = event.data;
       switch (message.command) {
+        case 'returnFromTargetedDetails':
+          if(message.action==="ok"){
+            currentChildRecord=message.record;
+            updateTab1Grid();
+            populateGridCanvas();
+          }
+          break;
         case 'loadDetails':
           loadDetails(message.record, message.childRecord, message.bufferedCopiedCells, message.spriteTilePaletteRecord,message.dataStore);
           break;
@@ -866,6 +874,7 @@
           Order: tile.Order
         });
       });
+      renderImages('imagesList1', tilesList);
     }
  
 
@@ -884,9 +893,17 @@
     }
 
     
+  
 
-
-    
+    function openObjectDetails(id) {
+      vscode.postMessage({
+        command: "openTargetedDetailsView",
+        record: currentChildRecord,
+        childRecord: currentPaletteRecord,
+        spriteTilePaletteRecord: id
+      });
+  
+    }
 
     function renderImages(id, images) {
       const imagesGrid = document.querySelector(`#${id} .images-grid`);
@@ -904,7 +921,7 @@
 
       imagesGrid.innerHTML = images.map((image, index) => `
         <div class="image-container ${id === 'imagesList2' ? 'no-drag' : ''}" id="image-${id}-${image.ID}" title="${image.ID} - ${image.Description}" style="width: ${imageWidth + 3}px; height: ${imageHeight + 3}px; background-color: ${backgroundColor}; border-color: ${borderColor};" draggable="${id === 'imagesList1'}" ondragstart="drag(event)" ondragover="allowDrop(event)" ondrop="drop(event)" onclick="focusImage(event, '${id}')">
-          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};">
+          <img src="${image.Image}" style="width: ${imageWidth}px; height: ${imageHeight}px; border-color: ${borderColor};" ondblclick="openObjectDetails(${image.ID})">
         </div>
       `).join('');
 
@@ -1336,7 +1353,7 @@
       const showBorders = document.getElementById('toggleBordersCheckbox').checked;
 
       // Create checkerboard pattern proportional to zoom level
-      const checkerboardCanvas = document.createElement('canvas');
+      checkerboardCanvas = document.createElement('canvas');
       const checkerSize = Math.max(8 * (currentRecord.EditingSettings.GridEditorZoom || 1), 1);
       checkerboardCanvas.width = checkerSize;
       checkerboardCanvas.height = checkerSize;
@@ -1353,8 +1370,8 @@
 
       const table = document.createElement('table');
       table.style.borderCollapse = 'collapse';
-      table.style.width = '100%';
-      table.style.height = '100%';
+      table.style.width = `${cellWidth * cellSize.width}px`; // Adjust width based on zoom level
+      table.style.height = `${cellHeight * cellSize.height}px`; // Adjust height based on zoom level
       table.style.border = '1px solid white'; // Add border around the entire grid
 
       for (let y = 0; y < cellHeight; y++) {
@@ -1365,6 +1382,7 @@
           cell.style.height = `${cellSize.height}px`;
           cell.style.position = 'relative';
           cell.style.cursor = 'default'; // Set cursor to default arrow
+          cell.style.padding = '0'; // Remove padding when borders are hidden
           if (showBorders) {
             cell.style.border = '1px solid white';
           } else {
@@ -1375,13 +1393,15 @@
           const tileID = tile ? tile.TileId : 0;
 
           if (tileID === 0) {
-            cell.style.background = checkerboardPattern;
+            cell.style.backgroundImage = `url(${checkerboardCanvas.toDataURL()})`;
           } else {
             const img = document.createElement('img');
             img.src = getImageFromObject(tileID, currentChildRecord, currentPaletteRecord);
             img.style.width = '100%';
             img.style.height = '100%';
+            img.style.display = 'block';
             img.style.imageRendering = 'pixelated';
+            
             cell.appendChild(img);
           }
 
@@ -1393,7 +1413,7 @@
             } else if (event.button === 2) { // Right click
               isMouseDown = true;
               isErasing = true;
-              eraseCell(cell, tile);
+              eraseCell(cell, tile, checkerboardCanvas);
             }
           });
 
@@ -1414,20 +1434,37 @@
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.imageRendering = 'pixelated';
+      img.style.display = 'block';
+      img.style.padding = '0';
       cell.appendChild(img);
     }
 
-    function eraseCell(cell, tile) {
+    function eraseCell(cell, tile, checkerboardCanvas) {
       tile.TileId = 0;
       cell.innerHTML = '';
-      cell.style.background = checkerboardPattern;
+      cell.style.backgroundImage = `url(${checkerboardCanvas.toDataURL()})`;
     }
 
     document.addEventListener('mouseup', () => {
       isMouseDown = false;
       isDrawing = false;
       isErasing = false;
+     
     });
+
+    function handleMouseMove(event) {
+      if (!isMouseDown) return;
+      const cell = event.target.closest('td');
+      if (!cell) return;
+      const tile = currentRecord.Values.find(value => value.ID === selectedMapID).Map.find(t => t.PosX === cell.cellIndex && t.PosY === cell.parentNode.rowIndex);
+      if (isDrawing) {
+        drawCell(cell, tile, selectedTileID);
+      } else if (isErasing) {
+        eraseCell(cell, tile, checkerboardCanvas);
+      }
+    }
+
+    document.addEventListener('mousemove', handleMouseMove);
 
     document.getElementById('toggleBordersCheckbox').addEventListener('change', populateGridCanvas);
 
@@ -1437,9 +1474,16 @@
       }
 
       const zoomIncrement = 0.1;
-      currentRecord.EditingSettings.GridEditorZoom += delta * zoomIncrement;
-      if (currentRecord.EditingSettings.GridEditorZoom < 0.1) {
-        currentRecord.EditingSettings.GridEditorZoom = 0.1;
+      
+      if(delta<0){
+        currentRecord.EditingSettings.GridEditorZoom-=zoomIncrement;
+      }
+      else{
+        currentRecord.EditingSettings.GridEditorZoom+=zoomIncrement;
+      }
+      
+      if (currentRecord.EditingSettings.GridEditorZoom < 2) {
+        currentRecord.EditingSettings.GridEditorZoom = 2;
       }
 
       populateGridCanvas();
@@ -1542,6 +1586,8 @@
       }
       return array;
     }
+
+    
   </script>
 </body>
 </html>
