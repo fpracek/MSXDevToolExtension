@@ -612,6 +612,12 @@
       <li id="clearAll" style="padding:5px; cursor:pointer;">Clear All (Shift+C)</li>
     </ul>
   </div>
+  <div id="errorOverlay" class="overlay">
+    <div id="errorDialog" class="dialog">
+      <p id="errorMessage"></p>
+      <button id="errorOkButton">OK</button>
+    </div>
+  </div>
   <script src="./utils.js"></script>
   
   <script>
@@ -1903,14 +1909,14 @@
 
       if (gridId === 'imagesList1') {
         currentRecord.EditingSettings.ObjectsGridZoom += delta * zoomIncrement;
-        if (currentRecord.EditingSettings.ObjectsGridZoom < 0.1) {
-          currentRecord.EditingSettings.ObjectsGridZoom = 0.1;
+        if (currentRecord.EditingSettings.ObjectsGridZoom < 1) {
+          currentRecord.EditingSettings.ObjectsGridZoom = 1;
         }
         renderImages('imagesList1', objectsList);
       } else if (gridId === 'imagesList2') {
         currentRecord.EditingSettings.PatternsGridZoom += delta * zoomIncrement;
-        if (currentRecord.EditingSettings.PatternsGridZoom < 0.1) {
-          currentRecord.EditingSettings.PatternsGridZoom = 0.1;
+        if (currentRecord.EditingSettings.PatternsGridZoom < 1) {
+          currentRecord.EditingSettings.PatternsGridZoom = 1;
         }
         updateTab2Grid();
       } else if (gridId === 'gridCanvas') {
@@ -2173,12 +2179,35 @@
     });
 
     document.getElementById('detailsOkButton').addEventListener('click', () => {
+      if ((currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") || currentRecord.Type === "Fonts") {
+        let colorSet = new Set();
+        
+        currentRecord.Values.forEach(item => {
+          let matrix = item.Matrices.find(matrix => matrix.ID === 1);
+          if (matrix) {
+            matrix.Values.forEach(cell => {
+              colorSet.add(cell.Value);
+            });
+          }
+        });
+       
+        if (colorSet.size > 2) {
+          document.getElementById('errorMessage').textContent = "Unable to use more than two colors for standard tiles set.";
+          document.getElementById('errorOverlay').style.display = 'flex';
+          return;
+        }
+      }
+
       vscode.postMessage({ command: 'updateRecord', record: currentRecord });
       vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'ok' });
     });
 
     document.getElementById('detailsCancelButton').addEventListener('click', () => {
       vscode.postMessage({ command: 'closeDetailsView', record: currentRecord, action: 'cancel' });
+    });
+
+    document.getElementById('errorOkButton').addEventListener('click', () => {
+      document.getElementById('errorOverlay').style.display = 'none';
     });
 
 
@@ -3101,6 +3130,15 @@
         document.querySelectorAll('#imagesList1 .image-container').forEach(container => container.classList.remove('focused'));
         focusedElement.classList.add('focused');
         focusedElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Aggiorna il tooltip, l'ID e la descrizione sotto la griglia delle immagini
+        const [id, description] = focusedElement.title.split(' - ');
+        const descriptionTextbox = document.getElementById('imagesList1-description');
+        const idTextbox = document.getElementById('imagesList1-id');
+        if (descriptionTextbox && idTextbox) {
+          descriptionTextbox.value = description;
+          idTextbox.value = id;
+        }
       }
     }
 

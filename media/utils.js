@@ -202,11 +202,20 @@ function createColorGrid(container, paletteColors) {
     tripletDiv.style.textAlign = 'center';
     tripletDiv.style.cursor = 'pointer';
 
-    tripletDiv.innerHTML = `
-      <div style="background-color: ${paletteColors[triplet[0]]}; color: ${getContrastingColor(paletteColors[triplet[0]])};">${triplet[0]}</div>
-      <div style="background-color: ${paletteColors[triplet[1]]}; color: ${getContrastingColor(paletteColors[triplet[1]])};">${triplet[1]}</div>
-      <div style="background-color: ${paletteColors[triplet[2]]}; color: ${getContrastingColor(paletteColors[triplet[2]])};">${triplet[0]} + ${triplet[1]} = ${triplet[2]}</div>
-    `;
+    // Rimuovi la combo del sottotipo per il tipo "Tiles"
+    if (triplet[0] === "Tiles") {
+      tripletDiv.innerHTML = `
+        <div style="background-color: ${paletteColors[triplet[0]]}; color: ${getContrastingColor(paletteColors[triplet[0]])};">${triplet[0]}</div>
+        <div style="background-color: ${paletteColors[triplet[1]]}; color: ${getContrastingColor(paletteColors[triplet[1]])};">${triplet[1]}</div>
+        <div style="background-color: ${paletteColors[triplet[2]]}; color: ${getContrastingColor(paletteColors[triplet[2]])};">${triplet[0]} + ${triplet[1]} = ${triplet[2]}</div>
+      `;
+    } else {
+      tripletDiv.innerHTML = `
+        <div style="background-color: ${paletteColors[triplet[0]]}; color: ${getContrastingColor(paletteColors[triplet[0]])};">${triplet[0]}</div>
+        <div style="background-color: ${paletteColors[triplet[1]]}; color: ${getContrastingColor(paletteColors[triplet[1]])};">${triplet[1]}</div>
+        <div style="background-color: ${paletteColors[triplet[2]]}; color: ${getContrastingColor(paletteColors[triplet[2]])};">${triplet[0]} + ${triplet[1]} = ${triplet[2]}</div>
+      `;
+    }
 
     tripletDiv.addEventListener('click', () => {
       document.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
@@ -217,5 +226,453 @@ function createColorGrid(container, paletteColors) {
   });
 
   container.appendChild(grid);
+}
+
+// Funzione per inserire un nuovo record di tipo "Tiles" con sottotipo "Bitmap"
+function insertNewTileRecord(record) {
+  if (record.type === "Tiles") {
+    record.subtype = "Bitmap";
+  }
+  // ...existing code per inserire il record...
+}
+
+function exportPalette(palette, exportType) {
+  const paletteId = palette.Id;
+  const paletteValues = palette.Values;
+  const cArrayName = `Palettes_${paletteId}`;
+  
+  let cArray = `// Palette set "${palette.Description}"\n`;
+
+  if (exportType === "C" || exportType === "C (MSXgl)") {
+    cArray += `const unsigned char ${cArrayName}[] = {\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  0x${r.toString(16).padStart(2, '0').toUpperCase()}, 0x${g.toString(16).padStart(2, '0').toUpperCase()}, 0x${b.toString(16).padStart(2, '0').toUpperCase()} // ${color.id} ${color.color.toUpperCase()}`;
+      if (index < paletteValues.length - 1) {
+        cArray += ',\n';
+      }
+    });
+    cArray += `\n};\n`;
+  } else if (exportType === "Assembly (binary)") {
+    cArray += `${cArrayName}:\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  .db %${r.toString(2).padStart(8, '0')}, %${g.toString(2).padStart(8, '0')}, %${b.toString(2).padStart(8, '0')} ; ${color.id} ${color.color.toUpperCase()}\n`;
+    });
+  } else if (exportType === "Assembly (exadecimal)") {
+    cArray += `${cArrayName}:\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  .db 0x${r.toString(16).padStart(2, '0').toUpperCase()}, 0x${g.toString(16).padStart(2, '0').toUpperCase()}, 0x${b.toString(16).padStart(2, '0').toUpperCase()} ; ${color.id} ${color.color.toUpperCase()}\n`;
+    });
+  } else if (exportType === "Assembly (MACRO80)") {
+    cArray += `${cArrayName}:\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  DEFB 0${r.toString(16).padStart(2, '0').toUpperCase()}H, 0${g.toString(16).padStart(2, '0').toUpperCase()}H, 0${b.toString(16).padStart(2, '0').toUpperCase()}H ; ${color.id} ${color.color.toUpperCase()}\n`;
+    });
+  } else if (exportType === "Pascal") {
+    cArray += `${cArrayName}: array[1..${paletteValues.length}] of byte = (\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  $${r.toString(16).padStart(2, '0').toUpperCase()}, $${g.toString(16).padStart(2, '0').toUpperCase()}, $${b.toString(16).padStart(2, '0').toUpperCase()} ; ${color.id} ${color.color.toUpperCase()}`;
+      if (index < paletteValues.length - 1) {
+        cArray += ',\n';
+      }
+    });
+    cArray += `\n);\n`;
+  } else if (exportType === "MSX-BASIC") {
+    cArray += `${cArrayName}:\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  DATA ${r}, ${g}, ${b} : REM ${color.id} ${color.color.toUpperCase()}\n`;
+    });
+  } else if (exportType === "MSX-C") {
+    cArray += `unsigned char ${cArrayName}[] = {\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  0x${r.toString(16).padStart(2, '0').toUpperCase()}, 0x${g.toString(16).padStart(2, '0').toUpperCase()}, 0x${b.toString(16).padStart(2, '0').toUpperCase()} // ${color.id} ${color.color.toUpperCase()}`;
+      if (index < paletteValues.length - 1) {
+        cArray += ',\n';
+      }
+    });
+    cArray += `\n};\n`;
+  } else {
+    cArray += `const unsigned char ${cArrayName}[] = {\n`;
+    paletteValues.forEach((color, index) => {
+      const [r, g, b] = hexToRgb(color.color);
+      cArray += `  0x${r.toString(16).padStart(2, '0').toUpperCase()}, 0x${g.toString(16).padStart(2, '0').toUpperCase()}, 0x${b.toString(16).padStart(2, '0').toUpperCase()} // ${color.id} ${color.color.toUpperCase()}`;
+      if (index < paletteValues.length - 1) {
+        cArray += ',\n';
+      }
+    });
+    cArray += `\n};\n`;
+  }
+
+  return cArray;
+}
+
+function exportTiles(record, exportType) {
+  if (record.Subtype === "Standard") {
+    return exportStandardTiles(record, exportType);
+  } else if (record.Subtype === "Bitmap") {
+    return exportBitmapTiles(record, exportType);
+  }
+}
+
+function exportStandardTiles(record, exportType) {
+  const tiles = record.Values.map(value => {
+    const matrix = value.Matrices.find(m => m.ID === 1);
+    const colors = [...new Set(matrix.Values.map(cell => cell.Value))];
+    const color1 = colors[0];
+    const color2 = colors[1];
+    const chosenColor = color1; // Choose one of the two colors
+    const tileArray = [];
+    for (let row = 0; row < 8; row++) {
+      let byte = 0;
+      for (let col = 0; col < 8; col++) {
+        const cell = matrix.Values.find(cell => cell.PosY === row && cell.PosX === col);
+        if (cell.Value === chosenColor) {
+          byte |= (1 << (7 - col));
+        }
+      }
+      tileArray.push(byte);
+    }
+    if (exportType === "Assembly (binary)") {
+      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+    } else if (exportType === "Assembly (exadecimal)") {
+      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+    } else if (exportType === "Assembly (MACRO80)") {
+      return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+    } else if (exportType === "Pascal") {
+      return `Tile_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+    } else if (exportType === "MSX-BASIC") {
+      return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+    } else if (exportType === "MSX-C") {
+      return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+    } else {
+      return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+    }
+  });
+  return '// Tiles set "'+ record.Description +'"\n' + tiles.join('\n');
+}
+
+function exportBitmapTiles(record, exportType) {
+  const [width, height] = record.Size.split('x').map(Number);
+  const halfWidth = width / 2;
+  if (exportType === "C (MSXgl)") {
+    return exportBitmapTilesMSXgl(record, width, height, halfWidth);
+  } else {
+    const tiles = record.Values.map(value => {
+      const matrix = value.Matrices.find(m => m.ID === 1);
+      const tileArray = Array.from({ length: height }, () => Array(halfWidth).fill(0));
+      matrix.Values.forEach(cell => {
+        const byteIndex = Math.floor(cell.PosX / 2);
+        const nibble = cell.PosX % 2 === 0 ? (cell.Value << 4) : cell.Value;
+        tileArray[cell.PosY][byteIndex] |= nibble;
+      });
+      if (exportType === "Assembly (binary)") {
+        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+      } else if (exportType === "Assembly (exadecimal)") {
+        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+      } else if (exportType === "Assembly (MACRO80)") {
+        return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.flat().map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+      } else if (exportType === "Pascal") {
+        return `Tile_${record.ID}_${value.ID}: array[1..${height}] of byte = (${tileArray.flat().map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+      } else if (exportType === "MSX-BASIC") {
+        return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.flat().map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+      } else if (exportType === "MSX-C") {
+        return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      } else {
+        return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      }
+    });
+    return '// Tiles set "'+ record.Description +'"\n' + tiles.join('\n');
+  }
+}
+
+function exportFonts(record, exportType) {
+  if (exportType === "C (MSXgl)") {
+    const [fontWidth, fontHeight] = record.Size.split('x').map(Number);
+    const [dataWidth, dataHeight] = record.FontSpaces.split('x').map(Number);
+    const firstChar = parseInt(record.FirstFontChar, 10);
+    const lastChar = parseInt(record.LastFontChar, 10);
+
+    let cArray = `const unsigned char FonSet_${record.ID} [] ={\n`;
+    cArray += `\t0x${dataWidth.toString(16).toUpperCase()}${dataHeight.toString(16).toUpperCase()}, // Data size [x|y]\n`;
+    cArray += `\t0x${fontWidth.toString(16).toUpperCase()}${fontHeight.toString(16).toUpperCase()}, // Font size [x|y]\n`;
+    cArray += `\t0x${firstChar.toString(16).padStart(2, '0').toUpperCase()}, // First character ASCII code ('${String.fromCharCode(firstChar)}')\n`;
+    cArray += `\t0x${lastChar.toString(16).padStart(2, '0').toUpperCase()}, // Last character ASCII code ('${String.fromCharCode(lastChar)}')\n`;
+
+    record.Values.forEach((value, index) => {
+      const matrix = value.Matrices.find(m => m.ID === 1);
+      const tileArray = [];
+      for (let row = 0; row < fontHeight; row++) {
+        let byte = 0;
+        for (let col = 0; col < fontWidth; col++) {
+          const cell = matrix.Values.find(cell => cell.PosY === row && cell.PosX === col);
+          if (cell && cell.Value !== "0") {
+            byte |= (1 << (7 - col));
+          }
+        }
+        tileArray.push(byte);
+      }
+      cArray += `// Font[${index}]\n`;
+      tileArray.forEach(byte => {
+        cArray += `\t0x${byte.toString(16).padStart(2, '0').toUpperCase()}, /* ${byte.toString(2).padStart(8, '0').replace(/0/g, '.').replace(/1/g, '#')} */\n`;
+      });
+    });
+
+    cArray += `};\n`;
+    return `// Fonts set "${record.Description}"\n` + cArray;
+  } else {
+    const tiles = record.Values.map(value => {
+      const matrix = value.Matrices.find(m => m.ID === 1);
+      const colors = [...new Set(matrix.Values.map(cell => cell.Value))];
+      const color1 = colors[0];
+      const color2 = colors[1];
+      const chosenColor = color1; // Choose one of the two colors
+      const tileArray = [];
+      for (let row = 0; row < 8; row++) {
+        let byte = 0;
+        for (let col = 0; col < 8; col++) {
+          const cell = matrix.Values.find(cell => cell.PosY === row && cell.PosX === col);
+          if (cell.Value === chosenColor) {
+            byte |= (1 << (7 - col));
+          }
+        }
+        tileArray.push(byte);
+      }
+      if (exportType === "Assembly (binary)") {
+        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+      } else if (exportType === "Assembly (exadecimal)") {
+        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+      } else if (exportType === "Assembly (MACRO80)") {
+        return `Font_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+      } else if (exportType === "Pascal") {
+        return `Font_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+      } else if (exportType === "MSX-BASIC") {
+        return `Font_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+      } else if (exportType === "MSX-C") {
+        return `unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      } else {
+        return `const unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      }
+    });
+    return `// Fonts set "${record.Description}"\n` + tiles.join('\n');
+  }
+}
+
+function exportBitmapTilesMSXgl(record, width, height, halfWidth) {
+  console.log("exportBitmapTilesMSXgl");
+  const totalTiles = record.Values.length;
+  const tilesPerRow = Math.floor(256 / width);
+  const rows = Math.ceil(totalTiles / tilesPerRow);
+  const matrixHeight = rows * height;
+  const matrixWidth = tilesPerRow * width;
+  const matrix = Array.from({ length: matrixHeight }, () => Array(matrixWidth).fill(0));
+
+  record.Values.forEach((value, index) => {
+    const matrixX = (index % tilesPerRow) * width;
+    const matrixY = Math.floor(index / tilesPerRow) * height;
+    const tileMatrix = value.Matrices.find(m => m.ID === 1);
+    tileMatrix.Values.forEach(cell => {
+      matrix[matrixY + cell.PosY][matrixX + cell.PosX] = cell.Value;
+    });
+  });
+
+  const flatArray = [];
+  for (let y = 0; y < matrixHeight; y++) {
+    for (let x = 0; x < matrixWidth; x += 2) {
+      const byte = (matrix[y][x] << 4) | matrix[y][x + 1];
+      flatArray.push(byte);
+    }
+  }
+
+  const formattedArray = flatArray.map((b, i) => (i % 128 === 0 ? '\n' : '') + `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ');
+  return '// Tiles set "'+ record.Description +'"\n' + `const unsigned char Tile_${record.ID}[] = {${formattedArray} };`;
+}
+function exportSprites(record, exportType) {
+  if (record.Subtype === "Type 1") {
+    return exportType1Sprites(record, exportType);
+  } else if (record.Subtype === "Type 2") {
+    return exportType2Sprites(record, exportType);
+  }
+}
+
+function exportType1Sprites(record, exportType) {
+  const [spriteWidth, spriteHeight] = record.Size.split('x').map(Number);
+  const blocksPerRow = Math.ceil(spriteWidth / 8);
+  const blocksPerColumn = Math.ceil(spriteHeight / 8);
+
+  // Get unique colors from all matrices
+  const uniqueColors = new Set();
+  record.Values.forEach(value => {
+    const matrix = value.Matrices.find(m => m.ID === 1);
+    matrix.Values.forEach(cell => {
+      uniqueColors.add(cell.Value);
+    });
+  });
+
+  const colorArray = Array.from(uniqueColors).sort();
+  let cArray = `// Sprites set "${record.Description}"\n`;
+
+  record.Values.forEach((value, spriteIndex) => {
+    const matrix = value.Matrices.find(m => m.ID === 1);
+    cArray += `Sprite_${record.ID}_${value.ID}:\n`;
+
+    for (let blockY = 0; blockY < blocksPerColumn; blockY++) {
+      for (let blockX = 0; blockX < blocksPerRow; blockX++) {
+        colorArray.forEach(color => {
+          const blockArray = [];
+
+          for (let row = 0; row < 8; row++) {
+            let byte = 0;
+            for (let col = 0; col < 8; col++) {
+              const cellX = blockX * 8 + col;
+              const cellY = blockY * 8 + row;
+              const cell = matrix.Values.find(cell => cell.PosX === cellX && cell.PosY === cellY);
+              if (cell && cell.Value === color) {
+                byte |= (1 << (7 - col));
+              }
+            }
+            blockArray.push(byte);
+          }
+
+          if (exportType === "Assembly (binary)") {
+            cArray += `  .db ${blockArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')} ; Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
+          } else if (exportType === "Assembly (exadecimal)") {
+            cArray += `  .db ${blockArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} ; Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
+          } else if (exportType === "Assembly (MACRO80)") {
+            cArray += `  DEFB ${blockArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')} ; Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
+          } else if (exportType === "Pascal") {
+            cArray += `  Block_${blockY + 1}_${blockX + 1}: array[1..8] of byte = (${blockArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}); // Color: ${color}\n`;
+          } else if (exportType === "MSX-BASIC") {
+            cArray += `  Block_${blockY + 1}_${blockX + 1}:\n  DATA ${blockArray.map(b => b.toString(10)).join(', ')} : REM Color: ${color}\n`;
+          } else if (exportType === "MSX-C") {
+            cArray += `unsigned char Sprite_${record.ID}_${value.ID}[] = { ${blockArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
+          } else {
+            cArray += `\t${blockArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}, // Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
+          }
+        });
+      }
+    }
+  });
+
+  return cArray;
+}
+
+function exportType2Sprites(record, exportType) {
+  const [spriteWidth, spriteHeight] = record.Size.split('x').map(Number);
+
+  let cArray = `// Sprites set "${record.Description}"\n`;
+
+  record.Values.forEach(value => {
+    const patternArray = Array(spriteHeight).fill(0).map(() => Array(spriteWidth).fill(0));
+    const colorArray = Array(spriteHeight).fill(0).map(() => Array(spriteWidth).fill(0));
+
+    value.Matrices.forEach(matrix => {
+      matrix.Values.forEach(cell => {
+        const x = cell.PosX;
+        const y = cell.PosY;
+        const colorIndex = parseInt(cell.Value, 16);
+
+        patternArray[y][x] |= (1 << (7 - (x % 8)));
+        colorArray[y][x] = colorIndex;
+      });
+    });
+
+    if (exportType === "Assembly (binary)") {
+      cArray += `Sprite_${record.ID}_${value.ID}_Pattern:\n  .db ${patternArray.flat().map(row => `%${row.toString(2).padStart(8, '0')}`).join(', ')}\n`;
+      cArray += `Sprite_${record.ID}_${value.ID}_Color:\n  .db ${colorArray.flat().map(color => `%${color.toString(2).padStart(8, '0')}`).join(', ')}\n`;
+    } else if (exportType === "Assembly (exadecimal)") {
+      cArray += `Sprite_${record.ID}_${value.ID}_Pattern:\n  .db ${patternArray.flat().map(row => `0x${row.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}\n`;
+      cArray += `Sprite_${record.ID}_${value.ID}_Color:\n  .db ${colorArray.flat().map(color => `0x${color.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}\n`;
+    } else if (exportType === "Assembly (MACRO80)") {
+      cArray += `Sprite_${record.ID}_${value.ID}_Pattern:\n  DEFB ${patternArray.flat().map(row => `0${row.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}\n`;
+      cArray += `Sprite_${record.ID}_${value.ID}_Color:\n  DEFB ${colorArray.flat().map(color => `0${color.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}\n`;
+    } else if (exportType === "Pascal") {
+      cArray += `Sprite_${record.ID}_${value.ID}_Pattern: array[1..${spriteHeight}] of byte = (${patternArray.flat().map(row => `$${row.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});\n`;
+      cArray += `Sprite_${record.ID}_${value.ID}_Color: array[1..${spriteHeight}] of byte = (${colorArray.flat().map(color => `$${color.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});\n`;
+    } else if (exportType === "MSX-BASIC") {
+      cArray += `Sprite_${record.ID}_${value.ID}_Pattern:\n  DATA ${patternArray.flat().map(row => row.toString(10)).join(', ')}\n`;
+      cArray += `Sprite_${record.ID}_${value.ID}_Color:\n  DATA ${colorArray.flat().map(color => color.toString(10)).join(', ')}\n`;
+    } else if (exportType === "MSX-C") {
+      cArray += `unsigned char Sprite_${record.ID}_${value.ID}_Pattern[] = { ${patternArray.flat().map(row => `0x${row.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
+      cArray += `unsigned char Sprite_${record.ID}_${value.ID}_Color[] = { ${colorArray.flat().map(color => `0x${color.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
+    } else {
+      cArray += `const unsigned char Sprite_${record.ID}_${value.ID}_Pattern[] = { ${patternArray.flat().map(row => `0x${row.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
+      cArray += `const unsigned char Sprite_${record.ID}_${value.ID}_Color[] = { ${colorArray.flat().map(color => `0x${color.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
+    }
+  });
+
+  return cArray;
+}
+
+function exportMaps(record, exportType) {
+  let cArray = `// Maps set "${record.Description}"\n`;
+
+  record.Values.forEach(value => {
+    let mapArray = '';
+    value.Map.forEach(cell => {
+      mapArray += `0x${cell.TileId.toString(16).padStart(2, '0').toUpperCase()}, `;
+    });
+    mapArray = mapArray.slice(0, -2); // Remove the trailing comma and space
+
+    if (exportType === "C" || exportType === "C (MSXgl)") {
+      cArray += `const unsigned char Map_${record.ID}_${value.ID}[] = { ${mapArray} };\n`;
+    } else if (exportType === "Assembly (binary)") {
+      cArray += `Map_${record.ID}_${value.ID}:\n  .db ${mapArray.replace(/0x/g, '%')}\n`;
+    } else if (exportType === "Assembly (exadecimal)") {
+      cArray += `Map_${record.ID}_${value.ID}:\n  .db ${mapArray}\n`;
+    } else if (exportType === "Assembly (MACRO80)") {
+      cArray += `Map_${record.ID}_${value.ID}:\n  DEFB ${mapArray.replace(/0x/g, '0').replace(/, /g, 'H, ')}H\n`;
+    } else if (exportType === "Pascal") {
+      cArray += `Map_${record.ID}_${value.ID}: array[1..${value.Map.length}] of byte = (${mapArray.replace(/0x/g, '$')});\n`;
+    } else if (exportType === "MSX-BASIC") {
+      cArray += `Map_${record.ID}_${value.ID}:\n  DATA ${mapArray.replace(/0x/g, '').replace(/, /g, ', ')}\n`;
+    } else if (exportType === "MSX-C") {
+      cArray += `unsigned char Map_${record.ID}_${value.ID}[] = { ${mapArray} };\n`;
+    } else {
+      cArray += `const unsigned char Map_${record.ID}_${value.ID}[] = { ${mapArray} };\n`;
+    }
+  });
+
+  return cArray;
+}
+
+function exportImages(record, exportType) {
+  let cArray = `// Images set "${record.Description}"\n`;
+
+  record.Values.forEach(value => {
+    const matrix = value.Matrices.find(m => m.ID === 1);
+    const [width, height] = record.Size.split('x').map(Number);
+    const halfWidth = width / 2;
+    const imageArray = Array.from({ length: height }, () => Array(halfWidth).fill(0));
+
+    matrix.Values.forEach(cell => {
+      const byteIndex = Math.floor(cell.PosX / 2);
+      const nibble = cell.PosX % 2 === 0 ? (cell.Value << 4) : cell.Value;
+      imageArray[cell.PosY][byteIndex] |= nibble;
+    });
+
+    if (exportType === "Assembly (binary)") {
+      cArray += `Image_${record.ID}_${value.ID}:\n  .db ${imageArray.flat().map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')} ; ${value.Name}\n`;
+    } else if (exportType === "Assembly (exadecimal)") {
+      cArray += `Image_${record.ID}_${value.ID}:\n  .db ${imageArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} ; ${value.Name}\n`;
+    } else if (exportType === "Assembly (MACRO80)") {
+      cArray += `Image_${record.ID}_${value.ID}:\n  DEFB ${imageArray.flat().map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')} ; ${value.Name}\n`;
+    } else if (exportType === "Pascal") {
+      cArray += `Image_${record.ID}_${value.ID}: array[1..${height}] of byte = (${imageArray.flat().map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}); // ${value.Name}\n`;
+    } else if (exportType === "MSX-BASIC") {
+      cArray += `Image_${record.ID}_${value.ID}:\n  DATA ${imageArray.flat().map(b => b.toString(10)).join(', ')} : REM ${value.Name}\n`;
+    } else if (exportType === "MSX-C") {
+      cArray += `unsigned char Image_${record.ID}_${value.ID}[] = { ${imageArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.Name}\n`;
+    } else {
+      cArray += `const unsigned char Image_${record.ID}_${value.ID}[] = { ${imageArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.Name}\n`;
+    }
+  });
+
+  return cArray;
 }
 

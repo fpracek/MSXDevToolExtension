@@ -164,6 +164,9 @@ function initializeMainPanel(context, loadedData) {
                 selectedCells = message.selectedCells;
                 console.log('Selected cells updated:', selectedCells);
                 return;
+            case 'dispose':
+                disposeExtension();
+                return;
         }
     });
     mainPanel.webview.postMessage({
@@ -443,4 +446,18 @@ function deactivate() {
     // Questa funzione viene chiamata quando l'estensione viene disattivata
 }
 exports.deactivate = deactivate;
+function disposeExtension() {
+    if (mainPanel) {
+        mainPanel.dispose();
+        mainPanel = null;
+    }
+    if (detailsPanel) {
+        detailsPanel.dispose();
+        detailsPanel = null;
+    }
+    if (targetedDetailsPanel) {
+        targetedDetailsPanel.dispose();
+        targetedDetailsPanel = null;
+    }
+}
 //# sourceMappingURL=extension.js.map

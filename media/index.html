@@ -370,6 +370,50 @@
       border-top: 1px solid #ccc;
       padding: 5px 0;
     }
+    .export-dialog {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      width: 900px;
+      height: 700px;
+      position: relative;
+    }
+    .export-dialog .header {
+      font-weight: bold;
+      margin-bottom: 20px;
+      font-size: 20px; /* Imposta la dimensione del testo a 20px */
+    }
+    .export-dialog td {
+      border: none; /* Rimuovi i bordi delle celle */
+    }
+    .export-dialog .line-numbers {
+      user-select: none; /* Impedisce la selezione dei numeri di riga */
+      text-align: right;
+      padding-right: 10px;
+      color: #888;
+      white-space: pre; /* Mantiene gli spazi bianchi */
+    }
+    .export-dialog .export-text {
+      width: 100%;
+      height: calc(100% - 100px);
+      resize: none;
+      padding: 10px;
+      box-sizing: border-box;
+      font-size: 20px; /* Imposta la dimensione del testo a 20px */
+      line-height: 1.5;
+      border-left: 1px solid #ccc; /* Aggiungi un bordo a sinistra per separare i numeri
+           overflow: auto; /* Enable both vertical and horizontal scrolling */
+      white-space: pre; /* Preserve whitespace and prevent text wrapping */
+    }
+    .export-dialog .export-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+    .zoom-controls {
+      display: none; /* Hide zoom controls */
+    }
   </style>
 </head>
 <body>
@@ -390,6 +434,19 @@
 
     <label for="subtypeSelect" id="subtypeLabel" class="hidden">Subtype:</label>
     <select id="subtypeSelect" class="hidden"></select>
+
+   
+    <select id="exportLanguageSelect" style="float: right;">
+      <option value="C (MSXgl)">C (MSXgl)</option>
+      <option value="C">C</option>
+      <option value="Assembly (binary)">Assembly (binary)</option>
+      <option value="Assembly (exadecimal)">Assembly (exadecimal)</option>
+      <option value="Assembly (MACRO80)">Assembly (MACRO80)</option>
+      <option value="MSX-C">MSX-C</option>
+      <option value="Pascal">Pascal</option>
+      <option value="MSX-BASIC">MSX-BASIC</option>
+    </select>
+    <label style="float: right; margin-left: 10px;padding-top: 5px;">Export language:</label>
   </div>
 
   <!-- DATA TABLE -->
@@ -437,7 +494,7 @@
   <!-- Overlay: import dialog -->
   <div id="importDialogOverlay" class="overlay">
     <div id="importDialog" class="dialog import-dialog">
-      <div class="header" id="importDialogHeader"></div>
+      <label class="header" id="importDialogHeader"></label>
       <div class="tabs">
         <button class="tab-button active" data-tab="generalTab">General</button>
         <button class="tab-button" data-tab="transparentColorsTab">Transparent colors</button>
@@ -604,6 +661,37 @@
     </div>
   </div>
 
+  <!-- Overlay: export dialog -->
+  <div id="exportDialogOverlay" class="overlay">
+    <div id="exportDialog" class="dialog export-dialog">
+      <table style="width: 100%; height: 100%;">
+        <tr>
+          <td style="height: 50px;">
+            <div class="header" id="exportDialogHeader"></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top; display: flex;">
+            <div class="export-container">
+              <div class="zoom-controls">
+                <button id="zoomIn">Zoom In</button>
+                <button id="zoomOut">Zoom Out</button>
+              </div>
+              <textarea id="exportText" style="height: 550px;" class="export-text" readonly></textarea>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="height: 50px;">
+            <div class="form-actions">
+              <button id="exportClose">Close</button>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
 <script src="./utils.js"></script>
 <script src="./colorThief.js"></script>
 <script>
@@ -621,7 +709,7 @@ let importPreviewImages = [];
 let importPreviewPalette = [];
 let importPaletteID = -1;
 let importPalette = []; // Global variable to store the palette used for import
-
+let thiefMaxColors=15;
 let croppedImportImages = []; 
 let noCroppedImportImages = [];
 /* ======================================================================================
@@ -631,9 +719,20 @@ let noCroppedImportImages = [];
 function loadDataStore(data) {
   dataStore = JSON.parse(data);
   updateGrid();
+
+  // Set the export language combo box value
+  const exportLanguageSelect = document.getElementById("exportLanguageSelect");
+  const settingExportType = dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE");
+  console.log("SETTING_EXPORT_TYPE", settingExportType);
+  if (settingExportType) {
+    exportLanguageSelect.value = settingExportType.Values;
+  } else {
+    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "C (MSXgl)" });
+    exportLanguageSelect.value = "C (MSXgl)";
+  }
 }
 
-/* ======================================================================================
+/* ======================================================================================""
    SUPPORT FUNCTIONS
    ====================================================================================== */
 
@@ -652,9 +751,9 @@ function getSubtypesForType(type) {
   if (type === "Sprites") {
     return ["Type 1", "Type 2"];
   }
-  else if (type === "Tiles") {
-    return ["Standard", "Bitmap"];
-  }
+ else if (type === "Tiles") {
+   return ["Bitmap","Standard"];
+ }
   return [];
 }
 
@@ -932,7 +1031,7 @@ function renderGrid(typeFilter, subtypeFilter) {
       tdActions.appendChild(removeBtn);
 
       // Import button
-      if ((row.Type === "Sprites" && row.Subtype=="Type 1") || row.Type === "Tiles" || row.Type === "Fonts" || row.Type === "Images" ) {
+      if ((row.Type === "Sprites" && row.Subtype=="Type 1") || (row.Type === "Tiles" && row.Subtype=="Bitmap") || row.Type === "Fonts" || row.Type === "Images" ) {
         let importBtn = document.createElement("button");
         importBtn.className = "action-button imports-button";
         importBtn.textContent = "Import...";
@@ -947,6 +1046,15 @@ function renderGrid(typeFilter, subtypeFilter) {
         detailsBtn.textContent = "Collection...";
         detailsBtn.dataset.recordId = row.ID;
         tdActions.appendChild(detailsBtn);
+      }
+
+      // Export button (except Animations)
+      if (row.Type !== "Animations" && row.Values && row.Values.length > 0) {
+        let exportBtn = document.createElement("button");
+        exportBtn.className = "action-button export-button";
+        exportBtn.textContent = "Export...";
+        exportBtn.dataset.recordId = row.ID;
+        tdActions.appendChild(exportBtn);
       }
     }
     tr.appendChild(tdActions);
@@ -994,6 +1102,7 @@ function openEditDialog(existingRow, createNew) {
     tempRow.FirstFontChar = "";
     tempRow.LastFontChar = "";
     tempRow.FontSpaces = "";
+    tempRow.msxglSpriteSize = "8x8"; // Default value for new records
 
     // if Palettes => default colors
     if (currentType === "Palettes") {
@@ -1123,13 +1232,30 @@ function openEditDialog(existingRow, createNew) {
     dialog.appendChild(divWrap);
   });
 
+  // Add msxglSpriteSize field if Type is "Sprites" and Subtype is "Type 1"
+  if (currentType === "Sprites" && currentSubtype === "Type 1") {
+    let divWrap = document.createElement("div");
+    divWrap.className = "form-group";
+    let fieldLabel = document.createElement("label");
+    fieldLabel.textContent = "MSXgl export mode:";
+    let fieldInput = document.createElement("select");
+    fieldInput.innerHTML = '<option value="8x8">8x8</option><option value="16x16">16x16</option>';
+    fieldInput.value = tempRow.msxglSpriteSize || "8x8";
+    fieldInput.addEventListener("change", e => {
+      tempRow.msxglSpriteSize = e.target.value;
+    });
+    divWrap.appendChild(fieldLabel);
+    divWrap.appendChild(fieldInput);
+    dialog.appendChild(divWrap);
+  }
+
   // Save/Cancel buttons
   let divActions = document.createElement("div");
   divActions.className = "form-group";
   let saveBtn = document.createElement("button");
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", () => {
-    console.log("Clicked SAVE; createNew=", createNew, "tempRow=", tempRow);
+    
 
     // If Animations in edit mode => user can only change description
     if (currentType === "Animations" && !createNew) {
@@ -1188,19 +1314,28 @@ function openEditDialog(existingRow, createNew) {
       }
     }
 
+    // Validate msxglSpriteSize if set to "16x16"
+    if (currentType === "Sprites" && currentSubtype === "Type 1" && tempRow.msxglSpriteSize === "16x16") {
+      let [w, h] = tempRow.Size.split("x").map(Number);
+      if (w % 16 !== 0 || h % 16 !== 0) {
+        openInfoDialog("16x16 MSXgl export mode is not compatible with sprite set size", null);
+        return;
+      }
+    }
+
     // Save
     if (createNew) {
       if (createNew && currentType !== "Palettes" && currentType !== "Animations") {
           
         tempRow.EditingSettings={
           "GridEditorZoom":currentType === "Images"?0.1:1.25,
-          "ObjectsGridZoom":1.25,
+          "ObjectsGridZoom":3,
           "ObjectsGridBackgroundColor":"#010101",
           "PatternsGridZoom":1,
           "PatternGridBackgroundColor":"#010101",
-          "PreviewZoom":1.25,
+          "PreviewZoom":3,
           "PreviewdBackgroundColor":"#010101",
-          "GridEditorZoom":1.25,
+          "GridEditorZoom":3,
           "ShowGrid":true,
           "Show8x8Blocks":true
         };
@@ -1259,18 +1394,30 @@ function checkSizeConstraints(type, subtype, row) {
   let wNum = parseInt(w, 10) || 0;
   let hNum = parseInt(h, 10) || 0;
 
-  if (type === "Sprites") {
+  if (type === "Sprites" || subtype=== "Type 2") {
     // Sprites validation (already present)
-    if (wNum < 8 || wNum > 64 || hNum < 8 || hNum > 64) {
-      openInfoDialog("Sprites size must be in [8..64]!", null);
+    if (wNum < 8 || wNum > 16 || hNum < 8 || hNum > 16) {
+      openInfoDialog("Size must be in [8.16]!", null);
       return false;
     }
-    if (wNum % 8 !== 0 || hNum % 8 !== 0) {
-      openInfoDialog("Sprites size must be multiples of 8", null);
+    if ((wNum !== hNum) ) {
+      openInfoDialog("Size must be 8x8 or 16x16", null);
       return false;
     }
   }
-  else if (type === "Tiles" && subtype === "Bitmap") {
+
+  if (type === "Sprites" || type=== "Tiles") {
+    // Sprites validation (already present)
+    if (wNum < 8 || wNum > 32 || hNum < 8 || hNum > 32) {
+      openInfoDialog("Size must be in [8.32]!", null);
+      return false;
+    }
+    if (wNum % 8 !== 0 || hNum % 8 !== 0) {
+      openInfoDialog("Size must be multiples of 8", null);
+      return false;
+    }
+  }
+  else if (type === "Tiles" ) { //&& subtype === "Bitmap"
     // Tiles bitmap validation (already present)
     if (wNum < 4 || wNum > 64 || hNum < 4 || hNum > 64) {
       openInfoDialog("Tiles Bitmap size must be in [4..64]", null);
@@ -1278,7 +1425,7 @@ function checkSizeConstraints(type, subtype, row) {
     }
   }
   else if (type === "Images") {
-     if (wNum > 256 || wNum < 30 ) {
+    if (wNum > 256 || wNum < 30 ) {
       openInfoDialog("Images width size must be in [30..256]", null);
       return false;
     }
@@ -1315,15 +1462,15 @@ function getFieldsForType(type, row, createNew) {
   ];
 
   if (type === "Sprites") {
-    // size enabled if createNew
+    let sizeOptions = { min: 8, max: 64, step: 8, disabled: !createNew };
+    if (row.Subtype === "Type 2") {
+      sizeOptions = { min: 8, max: 16, step: 8, disabled: !createNew };
+    }
     fields.push({
       label: "Size (W/H): ",
       name: "Size",
       type: "spinpair",
-      min: 8,
-      max: 64,
-      step: 8,
-      disabled: !createNew
+      ...sizeOptions
     });
     fields.push({
       label: "Palette: ",
@@ -1801,6 +1948,19 @@ document.addEventListener("DOMContentLoaded", () => {
       openImportDialog(record);
     }
   });
+
+  document.getElementById("dataGrid").addEventListener("click", (e) => {
+    if (e.target.classList.contains("export-button")) {
+      const recordId = e.target.dataset.recordId;
+      const currentType = document.getElementById("typeSelect").value;
+      let currentSubtype = "";
+      if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+        currentSubtype = document.getElementById("subtypeSelect").value;
+      }
+      const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
+      exportRecord(record);
+    }
+  });
  
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && (e.key === "+" || e.key === "-" || e.key === "=")) {
@@ -1863,6 +2023,36 @@ document.addEventListener("DOMContentLoaded", () => {
     topPane.style.flex = `0 0 ${topHeight}%`;
     bottomPane.style.flex = `0 0 ${100 - topHeight}%`;
   }
+
+  const exportLanguageSelect = document.getElementById("exportLanguageSelect");
+
+  exportLanguageSelect.addEventListener("change", () => {
+    const selectedValue = exportLanguageSelect.value;
+    const settingExportType = dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE");
+
+    if (settingExportType) {
+      settingExportType.Values = selectedValue;
+    } else {
+      dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: selectedValue });
+    }
+
+    saveDataStore();
+  });
+
+  const settingExportType = dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE");
+
+  if (settingExportType) {
+    exportLanguageSelect.value = settingExportType.Values;
+  } else {
+    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "C (MSXgl)" });
+    exportLanguageSelect.value = "C (MSXgl)";
+  }
+});
+
+window.addEventListener("unload", () => {
+  vscode.postMessage({
+    command: 'dispose'
+  });
 });
 
 /* ======================================================================================
@@ -1913,7 +2103,7 @@ function getDominantColorsFromDataUrl(base64Image, distancy,croppedImage,transpa
    
     img.onload = () => {
      
-        var palette = colorThief.getPalette(img, 15, 0); 
+        var palette = colorThief.getPalette(img, thiefMaxColors, 0); 
         
         palette = filterSimilarColors(palette, distancy);
         const hexPalette = palette.map(color => {
@@ -1972,7 +2162,7 @@ function highlightRow(row) {
 }
 
 function importItemsFromImage(hexPalette, croppedImage, transparentColors, size) {
-  console.log(hexPalette);
+  console.log("PALETTES",hexPalette);
   importPaletteID = -1; // Reset importPaletteID
   //importHexPalette = hexPalette; // Save the palette to the global variable
   const [itemWidth, itemHeight] = size;
@@ -1989,7 +2179,7 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
   const img = new Image();
   
   img.onload = () => {
-    console.log("Src Image:", img.src);
+    console.log("CROPPED IMAGE",croppedImage);
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
@@ -2060,7 +2250,7 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
     }
     ctx.putImageData(imageData, 0, 0);
     const newBase64Image = canvas.toDataURL();
-    console.log("New Base64 Image:", newBase64Image);
+  
 
     // Create cropped images and fill the importedItemsPanel
     const importedItemsPanel = document.getElementById("importedItemsPanel");
@@ -2124,15 +2314,30 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
 
     for (let row = 0; row < objectRows; row++) {
       for (let col = 0; col < objectColumns; col++) {
-        const x = posX + col * (itemWidth + gapX);
-        const y = posY + row * (itemHeight + gapY);
-
+        const x = col * (itemWidth + gapX);
+        const y = row * (itemHeight + gapY);
+        console.log("X_Y",x,y);
         const itemCanvas = document.createElement("canvas");
         itemCanvas.width = itemWidth;
         itemCanvas.height = itemHeight;
         const itemCtx = itemCanvas.getContext("2d");
         itemCtx.drawImage(canvas, x, y, itemWidth, itemHeight, 0, 0, itemWidth, itemHeight);
         const itemBase64 = itemCanvas.toDataURL();
+        console.log("CANVAS",canvas);
+        console.log("itemBase64",itemBase64);
+        // Ensure images for "Tiles" with subtype "Standard" or "Fonts" do not have more than two colors
+        if (document.getElementById("typeSelect").value === "Fonts" || (document.getElementById("typeSelect").value === "Tiles" && document.getElementById("subtypeSelect").value === "Standard")) { 
+          const uniqueColors = new Set();
+          const itemData = itemCtx.getImageData(0, 0, itemWidth, itemHeight).data;
+          for (let i = 0; i < itemData.length; i += 4) {
+            const color = `rgb(${itemData[i]}, ${itemData[i + 1]}, ${itemData[i + 2]})`;
+            uniqueColors.add(color);
+            if (uniqueColors.size > 2) {
+              openValidationDialog("Images for Tiles (Standard) or Fonts cannot have more than two colors.");
+              return;
+            }
+          }
+        }
 
         // Store the cropped image in the global array
         importPreviewImages.push({
@@ -2199,7 +2404,7 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
         gridCell.appendChild(itemRow);
       }
     }
-    gridRow.style.height = "250px";
+    gridRow.style.height = "220px";
     gridRow.appendChild(gridCell);
     table.appendChild(gridRow);
 
@@ -2212,60 +2417,67 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
 
     const previewContainer = document.createElement("div");
     previewContainer.className = "preview-container";
+    const previewSubContainer = document.createElement("div");
+    previewSubContainer.className = "preview-subcontainer";
+
 
     const previewImage = document.createElement("img");
     previewImage.id = "previewImage";
     previewImage.className = "preview-image";
     previewImage.style.width = "100%"; // Ensure the image fits the container
-    previewImage.style.height = "160px";
+    previewImage.style.height = "130px";
     previewImage.style.backgroundColor = "#ffffff"; // Default background color
     previewImage.style.cursor = "grab"; // Change cursor to indicate draggable
     previewImage.style.imageRendering = "pixelated"; // Ensure the image is pixelated
-    previewImage.addEventListener("wheel", (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        let scale = parseFloat(previewImage.style.transform.replace("scale(", "").replace(")", "")) || 1;
-        scale += e.deltaY < 0 ? 0.1 : -0.1;
-        scale = Math.max(0.1, scale);
-        previewImage.style.transform = `scale(${scale})`;
-      }
-    });
+    //previewImage.addEventListener("wheel", (e) => {
+    //  if (e.ctrlKey) {
+    //    e.preventDefault();
+    //    let scale = parseFloat(previewImage.style.transform.replace("scale(", "").replace(")", "")) || 1;
+    //    scale += e.deltaY < 0 ? 0.1 : -0.1;
+    //    scale = Math.max(0.1, scale);
+    //    if(scale>1.1){
+    //      scale=1.1;
+    //    }
+    //    previewImage.style.transform = `scale(${scale})`;
+    //  }
+    //});
 
-    let isDragging = false;
-    let startX, startY, scrollLeft, scrollTop;
+    //let isDragging = false;
+    //let startX, startY, scrollLeft, scrollTop;
 
-    previewImage.addEventListener("mousedown", (e) => {
-      isDragging = true;
-      startX = e.pageX - previewCell.offsetLeft;
-      startY = e.pageY - previewCell.offsetTop;
-      scrollLeft = previewCell.scrollLeft;
-      scrollTop = previewCell.scrollTop;
-      previewImage.style.cursor = "grabbing";
-    });
+   //previewImage.addEventListener("mousedown", (e) => {
+   //  isDragging = true;
+   //  startX = e.pageX - previewCell.offsetLeft;
+   //  startY = e.pageY - previewCell.offsetTop;
+   //  scrollLeft = previewCell.scrollLeft;
+   //  scrollTop = previewCell.scrollTop;
+   //  previewImage.style.cursor = "grabbing";
+   //});
 
-    previewImage.addEventListener("mouseleave", () => {
-      isDragging = false;
-      previewImage.style.cursor = "grab";
-    });
+   //previewImage.addEventListener("mouseleave", () => {
+   //  isDragging = false;
+   //  previewImage.style.cursor = "grab";
+   //});
 
-    previewImage.addEventListener("mouseup", () => {
-      isDragging = false;
-      previewImage.style.cursor = "grab";
-    });
+   //previewImage.addEventListener("mouseup", () => {
+   //  isDragging = false;
+   //  previewImage.style.cursor = "grab";
+   //});
 
-    previewImage.addEventListener("mousemove", (e) => {
-      if (!isDragging) return;
-      e.preventDefault();
-      const x = e.pageX - previewCell.offsetLeft;
-      const y = e.pageY - previewCell.offsetTop;
-      const walkX = (x - startX) * 1; // Adjust the multiplier for faster/slower scrolling
-      const walkY = (y - startY) * 1; // Adjust the multiplier for faster/slower scrolling
-      previewCell.scrollLeft = scrollLeft - walkX;
-      previewCell.scrollTop = scrollTop - walkY;
-    });
+   //previewImage.addEventListener("mousemove", (e) => {
+   //  if (!isDragging) return;
+   //  e.preventDefault();
+   //  const x = e.pageX - previewCell.offsetLeft;
+   //  const y = e.pageY - previewCell.offsetTop;
+   //  const walkX = (x - startX) * 1; // Adjust the multiplier for faster/slower scrolling
+   //  const walkY = (y - startY) * 1; // Adjust the multiplier for faster/slower scrolling
+   //  previewCell.scrollLeft = scrollLeft - walkX;
+   //  previewCell.scrollTop = scrollTop - walkY;
+   //});
 
     const backgroundColorButton = document.createElement("button");
     backgroundColorButton.className = "background-color-button";
+    backgroundColorButton.style.width = "100%";
     backgroundColorButton.textContent = "Background color";
     backgroundColorButton.addEventListener("click", () => {
       
@@ -2274,7 +2486,8 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
       });
     });
 
-    previewContainer.appendChild(previewImage);
+    previewSubContainer.appendChild(previewImage);
+    previewContainer.appendChild(previewSubContainer);
     previewContainer.appendChild(backgroundColorButton);
     previewCell.style.height = "200px";
     previewCell.style.paddingTop = "25px";
@@ -2467,7 +2680,8 @@ function openImportDialog(record) {
   const overlay = document.getElementById("importDialogOverlay");
   const paletteSelect = document.getElementById("paletteSelect");
   const header = document.getElementById("importDialogHeader");
-
+  header.style.fontSize = "20px";
+  header.style.fontWeight = "bold";
   // Clear all fields
   document.getElementById("objectColumns").value = 1;
   document.getElementById("objectRows").value = 1;
@@ -2491,8 +2705,8 @@ function openImportDialog(record) {
 
   // Set header text
   const recordType = record.Type.slice(0, -1); // Remove last character
-  header.textContent = `${recordType} ${record.Description} (${record.Size})`;
-
+  header.innerHTML = `${recordType} set "${record.Description}" (${record.Size})`;
+  //header.textContent = `<label style="font-weight: bold;font-size: 20px;">${recordType} ${record.Description}</label>`;
   paletteSelect.innerHTML = '<option value="areaonlycolors">Create a new palette (only selected area colors)</option><option value="allimagecolors">Create a new palette (all image colors)</option>';
   getPaletteOptions().forEach(opt => {
     let option = document.createElement("option");
@@ -2629,11 +2843,16 @@ document.getElementById("importPreview").addEventListener("click", () => {
   }
 
   const [recordWidth, recordHeight] = record.Size.split("x").map(Number);
-  console.log("RECORD WIDTH",recordWidth);
-  console.log("RECORD HEIGHT",recordHeight);
- console.log("RECORD",record);
-  const totalWidth = posX + (recordWidth * objectColumns) + (gapX * (objectColumns - 1));
-  const totalHeight = posY + (recordHeight * objectRows) + (gapY * (objectRows - 1));
+
+  const totalWidth =  (recordWidth * objectColumns) + (gapX * (objectColumns - 1));
+  const totalHeight =  (recordHeight * objectRows) + (gapY * (objectRows - 1));
+
+  // Set thiefMaxColors based on type and subtype
+  if (currentType === "Fonts" || (currentType === "Tiles" && currentSubtype === "Standard")) {
+    thiefMaxColors = 2;
+  } else {
+    thiefMaxColors = 15;
+  }
 
   const reader = new FileReader();
   reader.onload = function(event) {
@@ -2665,6 +2884,7 @@ document.getElementById("importPreview").addEventListener("click", () => {
       const ctx = canvas.getContext("2d");
       canvas.width = totalWidth;
       canvas.height = totalHeight;
+      console.log("SIZES",posX, posY, totalWidth, totalHeight);
       ctx.drawImage(img, posX, posY, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
       const croppedImage = canvas.toDataURL();
       //console.log("CANVAS",canvas);
@@ -2925,9 +3145,7 @@ document.getElementById("importImport").addEventListener("click", () => {
               const [r, g, b] = hexToRgb(c);
               return r === pixelColor[0] && g === pixelColor[1] && b === pixelColor[2];
             });
-            if (colorIndex === -1) {
-              console.log("PIXEL COLOR NOT FOUND", pixelColor); 
-            }
+           
             item.Matrices[0].Values.push({
               PosX: x,
               PosY: y,
@@ -2953,7 +3171,7 @@ document.getElementById("importImport").addEventListener("click", () => {
             const newPalette = {
               ID: getNextIDForType("Palettes"),
               Type: "Palettes",
-              Description: `Palette for ${type} ${record.Description}`,
+              Description: `Palette for ${type} set "${record.Description}"`,
               Subtype: "",
               Values: newPaletteColors
             };
@@ -3004,6 +3222,87 @@ function openConfirmDialog(onConfirm) {
   okBtn.addEventListener("click", onOk);
   cancelBtn.addEventListener("click", onCancel);
 }
+
+function exportRecord(record) {
+  let cArray='';
+  const exportType= dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE").Values;
+  console.log("EXPORT TYPE",exportType);
+  switch(record.Type) {
+    case "Sprites":
+      cArray=exportSprites(record,exportType);
+      break;
+    case "Tiles":
+      cArray=exportTiles(record,exportType);
+          break;
+    case "Maps":
+      cArray=exportMaps(record,exportType);
+      break;
+    case "Fonts":
+      cArray=exportFonts(record,exportType);
+      break;
+    case "Palettes":
+      cArray=exportPalette(record,exportType);
+      break;
+    case "Images":
+      cArray=exportImages(record,exportType);
+      break;
+    default:
+      break;
+  }
+ 
+  openExportDialogPanel(cArray,record);
+}
+
+function openExportDialogPanel(text,record) {
+  const overlay = document.getElementById("exportDialogOverlay");
+  const header = document.getElementById("exportDialogHeader");
+  const recordType = record.Type.slice(0, -1); // Remove last character
+  header.innerHTML = `${recordType} set "${record.Description}"`;
+  header.style.fontSize = "20px";
+  header.style.fontWeight = "bold";
+
+  const exportText = document.getElementById("exportText");
+
+
+
+  exportText.value = text;
+
+  overlay.style.display = "flex";
+}
+
+document.getElementById("exportClose").addEventListener("click", () => {
+  document.getElementById("exportDialogOverlay").style.display = "none";
+});
+
+document.getElementById("zoomIn").addEventListener("click", () => {
+  const exportText = document.getElementById("exportText");
+  let currentSize = parseInt(window.getComputedStyle(exportText).fontSize);
+  if (currentSize < 30) {
+    exportText.style.fontSize = `${currentSize + 1}px`;
+  }
+});
+
+document.getElementById("zoomOut").addEventListener("click", () => {
+  const exportText = document.getElementById("exportText");
+  let currentSize = parseInt(window.getComputedStyle(exportText).fontSize);
+  if (currentSize > 15) {
+    exportText.style.fontSize = `${currentSize - 1}px`;
+  }
+});
+
+document.getElementById("exportText").addEventListener("wheel", (e) => {
+  if (e.ctrlKey) {
+    e.preventDefault();
+    const exportText = document.getElementById("exportText");
+    let currentSize = parseInt(window.getComputedStyle(exportText).fontSize);
+    if (e.deltaY < 0 && currentSize < 25) {
+      exportText.style.fontSize = `${currentSize + 1}px`;
+    } else if (e.deltaY > 0 && currentSize > 15) {
+      exportText.style.fontSize = `${currentSize - 1}px`;
+    }
+  }
+});
+
 
 </script>
 </body>

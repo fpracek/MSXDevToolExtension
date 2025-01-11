@@ -207,6 +207,9 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
         selectedCells = message.selectedCells;
         console.log('Selected cells updated:', selectedCells);
         return;
+      case 'dispose':
+        disposeExtension();
+        return;
     }
   });
 
@@ -538,6 +541,21 @@ function getDefaultMSXColors(isMSX2: boolean) {
 
 export function deactivate() {
   // Questa funzione viene chiamata quando l'estensione viene disattivata
+}
+
+function disposeExtension() {
+  if (mainPanel) {
+    mainPanel.dispose();
+    mainPanel = null;
+  }
+  if (detailsPanel) {
+    detailsPanel.dispose();
+    detailsPanel = null;
+  }
+  if (targetedDetailsPanel) {
+    targetedDetailsPanel.dispose();
+    targetedDetailsPanel = null;
+  }
 }
 
 
