@@ -1,11 +1,15 @@
 # MSXDevTool Extension
 
-Questa estensione mostra un editor di sprite MSX in una WebView.
+This extension was born from the need to create graphic objects for the creation of games for MSX computers.
+It is possible to draw, import and modify sprites (both type 1 and type 2), tiles, fonts, PNG images.
+From all these items it is possible to generate the relevant data arrays for use in C, MSX-C, Assembly, Pascal and MSX-BASIC.
+There is also a feature to immediately test the movement of the sprites.
 
-## Come avviare in debug
+For info and issues:
+https://github.com/fpracek/MSXDevToolExtension
 
-1. Installa le dipendenze con `npm install`.
-2. Premi **F5** per avviare l’estensione in debug.
-3. Nel nuovo host di Visual Studio Code che si aprirà, apri la palette comandi con `Ctrl + Shift + P`.
-4. Digita **Open MSX Sprite Grid Editor** e premi **Invio**.
-5. Goditi la webview!
+fpracek@gmail.com
+
+![Sprites import](./images/SpritesImport.gif)
+![Type 2 sprites](./images/Sprites2.gif)
+![Animations](./images/Animations.gif)

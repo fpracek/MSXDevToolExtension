@@ -10,7 +10,7 @@
     "Other"
   ],
   "main": "./out/extension.js",
-  "publisher": "Fausto Pracek",
+  "publisher": "fpracek",
   "activationEvents": [
     "onCommand:msxdevtool-extension.openWebview"
   ],

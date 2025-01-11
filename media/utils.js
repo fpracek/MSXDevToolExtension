@@ -242,6 +242,7 @@ function exportPalette(palette, exportType) {
   const cArrayName = `Palettes_${paletteId}`;
   
   let cArray = `// Palette set "${palette.Description}"\n`;
+  let totalBytes = 0;
 
   if (exportType === "C" || exportType === "C (MSXgl)") {
     cArray += `const unsigned char ${cArrayName}[] = {\n`;
@@ -251,26 +252,34 @@ function exportPalette(palette, exportType) {
       if (index < paletteValues.length - 1) {
         cArray += ',\n';
       }
+      totalBytes += 3;
     });
     cArray += `\n};\n`;
+    cArray += `// Total bytes: ${totalBytes}\n`;
   } else if (exportType === "Assembly (binary)") {
     cArray += `${cArrayName}:\n`;
     paletteValues.forEach((color, index) => {
       const [r, g, b] = hexToRgb(color.color);
       cArray += `  .db %${r.toString(2).padStart(8, '0')}, %${g.toString(2).padStart(8, '0')}, %${b.toString(2).padStart(8, '0')} ; ${color.id} ${color.color.toUpperCase()}\n`;
+      totalBytes += 3;
     });
+    cArray += `; Total bytes: ${totalBytes}\n`;
   } else if (exportType === "Assembly (exadecimal)") {
     cArray += `${cArrayName}:\n`;
     paletteValues.forEach((color, index) => {
       const [r, g, b] = hexToRgb(color.color);
       cArray += `  .db 0x${r.toString(16).padStart(2, '0').toUpperCase()}, 0x${g.toString(16).padStart(2, '0').toUpperCase()}, 0x${b.toString(16).padStart(2, '0').toUpperCase()} ; ${color.id} ${color.color.toUpperCase()}\n`;
+      totalBytes += 3;
     });
+    cArray += `; Total bytes: ${totalBytes}\n`;
   } else if (exportType === "Assembly (MACRO80)") {
     cArray += `${cArrayName}:\n`;
     paletteValues.forEach((color, index) => {
       const [r, g, b] = hexToRgb(color.color);
       cArray += `  DEFB 0${r.toString(16).padStart(2, '0').toUpperCase()}H, 0${g.toString(16).padStart(2, '0').toUpperCase()}H, 0${b.toString(16).padStart(2, '0').toUpperCase()}H ; ${color.id} ${color.color.toUpperCase()}\n`;
+      totalBytes += 3;
     });
+    cArray += `; Total bytes: ${totalBytes}\n`;
   } else if (exportType === "Pascal") {
     cArray += `${cArrayName}: array[1..${paletteValues.length}] of byte = (\n`;
     paletteValues.forEach((color, index) => {
@@ -279,14 +288,18 @@ function exportPalette(palette, exportType) {
       if (index < paletteValues.length - 1) {
         cArray += ',\n';
       }
+      totalBytes += 3;
     });
     cArray += `\n);\n`;
+    cArray += `// Total bytes: ${totalBytes}\n`;
   } else if (exportType === "MSX-BASIC") {
     cArray += `${cArrayName}:\n`;
     paletteValues.forEach((color, index) => {
       const [r, g, b] = hexToRgb(color.color);
       cArray += `  DATA ${r}, ${g}, ${b} : REM ${color.id} ${color.color.toUpperCase()}\n`;
+      totalBytes += 3;
     });
+    cArray += `REM Total bytes: ${totalBytes}\n`;
   } else if (exportType === "MSX-C") {
     cArray += `unsigned char ${cArrayName}[] = {\n`;
     paletteValues.forEach((color, index) => {
@@ -295,8 +308,10 @@ function exportPalette(palette, exportType) {
       if (index < paletteValues.length - 1) {
         cArray += ',\n';
       }
+      totalBytes += 3;
     });
     cArray += `\n};\n`;
+    cArray += `// Total bytes: ${totalBytes}\n`;
   } else {
     cArray += `const unsigned char ${cArrayName}[] = {\n`;
     paletteValues.forEach((color, index) => {
@@ -305,8 +320,10 @@ function exportPalette(palette, exportType) {
       if (index < paletteValues.length - 1) {
         cArray += ',\n';
       }
+      totalBytes += 3;
     });
     cArray += `\n};\n`;
+    cArray += `// Total bytes: ${totalBytes}\n`;
   }
 
   return cArray;
@@ -339,22 +356,23 @@ function exportStandardTiles(record, exportType) {
       tileArray.push(byte);
     }
     if (exportType === "Assembly (binary)") {
-      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}\n; Total bytes: ${tileArray.length}`;
     } else if (exportType === "Assembly (exadecimal)") {
-      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+      return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}\n; Total bytes: ${tileArray.length}`;
     } else if (exportType === "Assembly (MACRO80)") {
-      return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+      return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}\n; Total bytes: ${tileArray.length}`;
     } else if (exportType === "Pascal") {
-      return `Tile_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+      return `Tile_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});\n// Total bytes: ${tileArray.length}`;
     } else if (exportType === "MSX-BASIC") {
-      return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+      return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}\nREM Total bytes: ${tileArray.length}`;
     } else if (exportType === "MSX-C") {
-      return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.length}`;
     } else {
-      return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+      return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.length}`;
     }
   });
-  return '// Tiles set "'+ record.Description +'"\n' + tiles.join('\n');
+  const totalBytes = tiles.reduce((sum, tile) => sum + tile.match(/0x[0-9A-F]{2}/g).length, 0);
+  return `// Tiles set "${record.Description}"\n${tiles.join('\n')}\n// Total bytes: ${totalBytes}\n`;
 }
 
 function exportBitmapTiles(record, exportType) {
@@ -372,22 +390,23 @@ function exportBitmapTiles(record, exportType) {
         tileArray[cell.PosY][byteIndex] |= nibble;
       });
       if (exportType === "Assembly (binary)") {
-        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}\n; Total bytes: ${tileArray.flat().length}`;
       } else if (exportType === "Assembly (exadecimal)") {
-        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+        return `Tile_${record.ID}_${value.ID}:\n  .db ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}\n; Total bytes: ${tileArray.flat().length}`;
       } else if (exportType === "Assembly (MACRO80)") {
-        return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.flat().map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+        return `Tile_${record.ID}_${value.ID}:\n  DEFB ${tileArray.flat().map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}\n; Total bytes: ${tileArray.flat().length}`;
       } else if (exportType === "Pascal") {
-        return `Tile_${record.ID}_${value.ID}: array[1..${height}] of byte = (${tileArray.flat().map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+        return `Tile_${record.ID}_${value.ID}: array[1..${height}] of byte = (${tileArray.flat().map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});\n// Total bytes: ${tileArray.flat().length}`;
       } else if (exportType === "MSX-BASIC") {
-        return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.flat().map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+        return `Tile_${record.ID}_${value.ID}:\n  DATA ${tileArray.flat().map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}\nREM Total bytes: ${tileArray.flat().length}`;
       } else if (exportType === "MSX-C") {
-        return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+        return `unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.flat().length}`;
       } else {
-        return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+        return `const unsigned char Tile_${record.ID}_${value.ID}[] = { ${tileArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.flat().length}`;
       }
     });
-    return '// Tiles set "'+ record.Description +'"\n' + tiles.join('\n');
+    const totalBytes = tiles.reduce((sum, tile) => sum + tile.match(/0x[0-9A-F]{2}/g).length, 0);
+    return `// Tiles set "${record.Description}"\n${tiles.join('\n')}\n// Total bytes: ${totalBytes}\n`;
   }
 }
 
@@ -403,6 +422,8 @@ function exportFonts(record, exportType) {
     cArray += `\t0x${fontWidth.toString(16).toUpperCase()}${fontHeight.toString(16).toUpperCase()}, // Font size [x|y]\n`;
     cArray += `\t0x${firstChar.toString(16).padStart(2, '0').toUpperCase()}, // First character ASCII code ('${String.fromCharCode(firstChar)}')\n`;
     cArray += `\t0x${lastChar.toString(16).padStart(2, '0').toUpperCase()}, // Last character ASCII code ('${String.fromCharCode(lastChar)}')\n`;
+
+    let totalBytes = 4; // Initial bytes for the header
 
     record.Values.forEach((value, index) => {
       const matrix = value.Matrices.find(m => m.ID === 1);
@@ -420,10 +441,12 @@ function exportFonts(record, exportType) {
       cArray += `// Font[${index}]\n`;
       tileArray.forEach(byte => {
         cArray += `\t0x${byte.toString(16).padStart(2, '0').toUpperCase()}, /* ${byte.toString(2).padStart(8, '0').replace(/0/g, '.').replace(/1/g, '#')} */\n`;
+        totalBytes += 1;
       });
     });
 
     cArray += `};\n`;
+    cArray += `// Total bytes: ${totalBytes}\n`;
     return `// Fonts set "${record.Description}"\n` + cArray;
   } else {
     const tiles = record.Values.map(value => {
@@ -444,22 +467,23 @@ function exportFonts(record, exportType) {
         tileArray.push(byte);
       }
       if (exportType === "Assembly (binary)") {
-        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}`;
+        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `%${b.toString(2).padStart(8, '0')}`).join(', ')}\n; Total bytes: ${tileArray.length}`;
       } else if (exportType === "Assembly (exadecimal)") {
-        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}`;
+        return `Font_${record.ID}_${value.ID}:\n  .db ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}\n; Total bytes: ${tileArray.length}`;
       } else if (exportType === "Assembly (MACRO80)") {
-        return `Font_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}`;
+        return `Font_${record.ID}_${value.ID}:\n  DEFB ${tileArray.map(b => `0${b.toString(16).padStart(2, '0').toUpperCase()}H`).join(', ')}\n; Total bytes: ${tileArray.length}`;
       } else if (exportType === "Pascal") {
-        return `Font_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});`;
+        return `Font_${record.ID}_${value.ID}: array[1..8] of byte = (${tileArray.map(b => `$${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')});\n// Total bytes: ${tileArray.length}`;
       } else if (exportType === "MSX-BASIC") {
-        return `Font_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}`;
+        return `Font_${record.ID}_${value.ID}:\n  DATA ${tileArray.map(b => b.toString(10)).join(', ')} : REM ${value.ID} ${value.Name}\nREM Total bytes: ${tileArray.length}`;
       } else if (exportType === "MSX-C") {
-        return `unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+        return `unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.length}`;
       } else {
-        return `const unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}`;
+        return `const unsigned char Font_${record.ID}_${value.ID}[] = { ${tileArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.ID} ${value.Name}\n// Total bytes: ${tileArray.length}`;
       }
     });
-    return `// Fonts set "${record.Description}"\n` + tiles.join('\n');
+    const totalBytes = tiles.reduce((sum, tile) => sum + tile.match(/0x[0-9A-F]{2}/g).length, 0);
+    return `// Fonts set "${record.Description}"\n${tiles.join('\n')}\n// Total bytes: ${totalBytes}\n`;
   }
 }
 
@@ -490,8 +514,10 @@ function exportBitmapTilesMSXgl(record, width, height, halfWidth) {
   }
 
   const formattedArray = flatArray.map((b, i) => (i % 128 === 0 ? '\n' : '') + `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ');
-  return '// Tiles set "'+ record.Description +'"\n' + `const unsigned char Tile_${record.ID}[] = {${formattedArray} };`;
+  const totalBytes = flatArray.length;
+  return `// Tiles set "${record.Description}"\nconst unsigned char Tile_${record.ID}[] = {${formattedArray} };\n// Total bytes: ${totalBytes}\n`;
 }
+
 function exportSprites(record, exportType) {
   if (record.Subtype === "Type 1") {
     return exportType1Sprites(record, exportType);
@@ -516,6 +542,7 @@ function exportType1Sprites(record, exportType) {
 
   const colorArray = Array.from(uniqueColors).sort();
   let cArray = `// Sprites set "${record.Description}"\n`;
+  let totalBytes = 0;
 
   record.Values.forEach((value, spriteIndex) => {
     const matrix = value.Matrices.find(m => m.ID === 1);
@@ -554,11 +581,13 @@ function exportType1Sprites(record, exportType) {
           } else {
             cArray += `\t${blockArray.map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')}, // Block (${blockY + 1}-${blockX + 1}) - Color: ${color}\n`;
           }
+          totalBytes += blockArray.length;
         });
       }
     }
   });
 
+  cArray += `// Total bytes: ${totalBytes}\n`;
   return cArray;
 }
 
@@ -566,6 +595,7 @@ function exportType2Sprites(record, exportType) {
   const [spriteWidth, spriteHeight] = record.Size.split('x').map(Number);
 
   let cArray = `// Sprites set "${record.Description}"\n`;
+  let totalBytes = 0;
 
   record.Values.forEach(value => {
     const patternArray = Array(spriteHeight).fill(0).map(() => Array(spriteWidth).fill(0));
@@ -604,13 +634,16 @@ function exportType2Sprites(record, exportType) {
       cArray += `const unsigned char Sprite_${record.ID}_${value.ID}_Pattern[] = { ${patternArray.flat().map(row => `0x${row.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
       cArray += `const unsigned char Sprite_${record.ID}_${value.ID}_Color[] = { ${colorArray.flat().map(color => `0x${color.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} };\n`;
     }
+    totalBytes += patternArray.flat().length + colorArray.flat().length;
   });
 
+  cArray += `// Total bytes: ${totalBytes}\n`;
   return cArray;
 }
 
 function exportMaps(record, exportType) {
   let cArray = `// Maps set "${record.Description}"\n`;
+  let totalBytes = 0;
 
   record.Values.forEach(value => {
     let mapArray = '';
@@ -636,13 +669,16 @@ function exportMaps(record, exportType) {
     } else {
       cArray += `const unsigned char Map_${record.ID}_${value.ID}[] = { ${mapArray} };\n`;
     }
+    totalBytes += value.Map.length;
   });
 
+  cArray += `// Total bytes: ${totalBytes}\n`;
   return cArray;
 }
 
 function exportImages(record, exportType) {
   let cArray = `// Images set "${record.Description}"\n`;
+  let totalBytes = 0;
 
   record.Values.forEach(value => {
     const matrix = value.Matrices.find(m => m.ID === 1);
@@ -671,8 +707,10 @@ function exportImages(record, exportType) {
     } else {
       cArray += `const unsigned char Image_${record.ID}_${value.ID}[] = { ${imageArray.flat().map(b => `0x${b.toString(16).padStart(2, '0').toUpperCase()}`).join(', ')} }; // ${value.Name}\n`;
     }
+    totalBytes += imageArray.flat().length;
   });
 
+  cArray += `// Total bytes: ${totalBytes}\n`;
   return cArray;
 }
 
