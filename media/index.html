@@ -414,6 +414,73 @@
     .zoom-controls {
       display: none; /* Hide zoom controls */
     }
+    .filter-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .filter-container label {
+      margin-right: 5px;
+    }
+    .filter-container select {
+      margin-right: 10px;
+    }
+    .grid-container {
+      margin-top: 20px;
+    }
+    .grid-container table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .grid-container th, .grid-container td {
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: left;
+    }
+    .grid-container th {
+      background-color: #f0f0f0;
+    }
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .form-actions button {
+      margin-left: 10px;
+    }
+    .image-dialog {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      width: 900px;
+      height: 700px;
+      position: relative;
+    }
+    .image-dialog .header {
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .image-dialog .image-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #f9f9f9;
+      border: 1px solid #ccc;
+      overflow: auto; /* Enable scrolling */
+    }
+    .image-dialog .form-actions {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: flex-end;
+      width: auto;
+    }
+    .form-actions button {
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -447,6 +514,7 @@
       <option value="MSX-BASIC">MSX-BASIC</option>
     </select>
     <label style="float: right; margin-left: 10px;padding-top: 5px;">Export language:</label>
+    <button id="codeGeneratorButton" style="float: right; margin-left: 10px;">MSXgl code generator...</button>
   </div>
 
   <!-- DATA TABLE -->
@@ -684,6 +752,7 @@
         <tr>
           <td style="height: 50px;">
             <div class="form-actions">
+              <button id="exportCopy">Copy</button>
               <button id="exportClose">Close</button>
             </div>
           </td>
@@ -692,13 +761,74 @@
     </div>
   </div>
 
+  <!-- Code Generator Modal -->
+  <div id="codeGeneratorModal" class="overlay">
+    <div class="dialog" style="width: 800px;height:600px;">
+      <div class="filter-container">
+        <label for="targetSelect">Target:</label>
+        <select id="targetSelect">
+          <option value="MSX">MSX</option>
+          <option value="MSX2">MSX2</option>
+          <option value="MSX2+">MSX2+</option>
+          <!-- <option value="MSX Turbo-R">MSX Turbo-R</option> -->
+          <!--  <option value="V9990">V9990</option> -->
+        </select>
+        <label for="screenModeSelect">Screen mode:</label>
+        <select id="screenModeSelect"></select>
+        <label for="codePaletteSelect">Palette:</label> <!-- Changed id here -->
+        <select id="codePaletteSelect"></select> <!-- Changed id here -->
+        <div style="margin-left: auto;">
+          <button id="codeGeneratorWrite">Write</button>
+          <button id="codeGeneratorCancelTop">Cancel</button>
+        </div>
+      </div>
+      <div class="grid-container">
+        <table id="filteredGrid">
+          <thead>
+            <tr>
+              <th>Select</th>
+              <th>ID</th>
+              <th>Description</th>
+              <th>Type</th>
+              <th>Subtype</th>
+              <th>Font Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Filtered elements will be populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+      <div class="form-actions">
+        <button id="codeGeneratorCopy">Copy</button>
+        <button id="codeGeneratorWrite">Write</button>
+        <button id="codeGeneratorCancelTop">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay: image dialog -->
+  <div id="imageDialogOverlay" class="overlay">
+    <div class="dialog image-dialog">
+      <div class="header" id="imageDialogHeader"></div>
+      <div class="image-container" style="width: 750px; height: 600px;">
+        <img id="combinedImage"  src="" />
+      </div>
+      <div class="form-actions">
+        <button id="imageDialogCopy">Copy</button>
+        <button id="imageDialogClose">Close</button>
+      </div>
+    </div>
+  </div>
+
 <script src="./utils.js"></script>
 <script src="./colorThief.js"></script>
+
 <script>
 
 /* ======================================================================================
    GLOBAL STATE
-   ====================================================================================== */
+   ====================================================================================== */ 
 let editModeActive = false; // if true => hide buttons in grid
 let dataStore = [];
 let tempPaletteColors = []; // Global variable to store temporary colors
@@ -712,6 +842,10 @@ let importPalette = []; // Global variable to store the palette used for import
 let thiefMaxColors=15;
 let croppedImportImages = []; 
 let noCroppedImportImages = [];
+let codeGeneratorItems = [];
+let codGeneratorMachine="";
+let codeGeneratorScreenMode="";
+
 /* ======================================================================================
    MOCK DATA
    ====================================================================================== */
@@ -1055,6 +1189,22 @@ function renderGrid(typeFilter, subtypeFilter) {
         exportBtn.textContent = "Export...";
         exportBtn.dataset.recordId = row.ID;
         tdActions.appendChild(exportBtn);
+      }
+
+      // Get image button
+      if (["Sprites", "Fonts", "Images", "Tiles"].includes(typeFilter)) {
+        let btnGetImage = document.createElement("button");
+        btnGetImage.textContent = "Get image...";
+        btnGetImage.className = "action-button getimage-button";
+        btnGetImage.addEventListener("click", () => {
+        const paletteRecord = dataStore.find(r => r.Type === "Palettes" && r.ID === row.ChildObjectID);
+        createCombinedImage(row, paletteRecord);
+        document.getElementById("imageDialogHeader").textContent = `${typeFilter} set "${row.Description}"`;
+        document.getElementById("imageDialogHeader").style.fontWeight = "bold";
+        document.getElementById("imageDialogHeader").style.fontSize = "20px";
+        document.getElementById("imageDialogOverlay").style.display = "flex";
+        });
+        tdActions.appendChild(btnGetImage);
       }
     }
     tr.appendChild(tdActions);
@@ -2047,6 +2197,75 @@ document.addEventListener("DOMContentLoaded", () => {
     dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "C (MSXgl)" });
     exportLanguageSelect.value = "C (MSXgl)";
   }
+
+  document.getElementById("codeGeneratorButton").addEventListener("click", () => {
+    document.getElementById("codeGeneratorModal").style.display = "flex";
+    populatePaletteOptions();
+    updateScreenModes();
+  });
+
+
+
+  document.getElementById("targetSelect").addEventListener("change", updateScreenModes);
+
+  function updateScreenModes() {
+    const target = document.getElementById("targetSelect").value;
+    const screenModeSelect = document.getElementById("screenModeSelect");
+    screenModeSelect.innerHTML = "";
+
+    let screenModes = [];
+    switch (target) {
+      case "MSX":
+        screenModes = ["Screen 0", "Screen 1", "Screen 2", "Screen 3"];
+        break;
+      case "MSX2":
+        screenModes = ["Screen 4", "Screen 5", "Screen 6", "Screen 7", "Screen 8"];
+        break;
+      case "MSX2+":
+        screenModes = ["Screen 10", "Screen 11", "Screen 12"];
+        break;
+      case "MSX Turbo-R":
+        screenModes = ["Screen 10", "Screen 11", "Screen 12"];
+        break;
+      case "V9990":
+        screenModes = ["P1", "P2", "B1", "B2", "B3", "B4"];
+        break;
+    }
+
+    screenModes.forEach(mode => {
+      const option = document.createElement("option");
+      option.value = mode;
+      option.textContent = mode;
+      screenModeSelect.appendChild(option);
+    });
+
+    updateFilteredGrid();
+  }
+
+  function populatePaletteOptions() {
+    const paletteSelect = document.getElementById("paletteSelect");
+    paletteSelect.innerHTML = ""; // Clear existing options
+    const palettes = dataStore.filter(r => r.Type === "Palettes");
+    palettes.forEach(palette => {
+      const option = document.createElement("option");
+      option.value = palette.ID;
+      option.textContent = palette.Description;
+      paletteSelect.appendChild(option);
+    });
+
+    const codePaletteSelect = document.getElementById("codePaletteSelect"); // Added this line
+    codePaletteSelect.innerHTML = ""; // Clear existing options
+    palettes.forEach(palette => {
+      const option = document.createElement("option");
+      option.value = palette.ID;
+      option.textContent = palette.Description;
+      codePaletteSelect.appendChild(option);
+    });
+  }
+
+  
+
+
 });
 
 window.addEventListener("unload", () => {
@@ -3303,7 +3522,325 @@ document.getElementById("exportText").addEventListener("wheel", (e) => {
   }
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  populatePaletteOptions();
+  updateScreenModes();
+  updateFilteredGrid();
 
+  document.getElementById("codePaletteSelect").addEventListener("change", updateFilteredGrid);
+  document.getElementById("targetSelect").addEventListener("change", updateScreenModes);
+  document.getElementById("screenModeSelect").addEventListener("change", updateFilteredGrid);
+});
+
+function populatePaletteOptions() {
+  const paletteSelect = document.getElementById("paletteSelect");
+  const palettes = dataStore.filter(r => r.Type === "Palettes");
+  palettes.forEach(palette => {
+    const option = document.createElement("option");
+    option.value = palette.ID;
+    option.textContent = palette.Description;
+    paletteSelect.appendChild(option);
+  });
+}
+
+function updateFilteredGrid() {
+  const paletteSelect = document.getElementById("codePaletteSelect").value;
+  const screenModeSelect = document.getElementById("screenModeSelect").value;
+  const screenModeValue = screenModeSelect.replace(/\D/g, ''); // Extract numeric part
+  const tbody = document.getElementById("filteredGrid").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  const filteredData = dataStore.filter(record => {
+    const childObjectID = record.ChildObjectID?record.ChildObjectID.toString():"";
+    if (record.Type === "Animations") return false;
+    if (paletteSelect && childObjectID !== parseInt(paletteSelect, 10).toString()) {
+      return false;
+    };
+    if (screenModeValue) {
+      if (record.Type === "Sprites" && ["0"].includes(screenModeValue)){
+        return false;
+      }
+      if (["Sprites"].includes(record.Type) && ["0", "1", "2", "3"].includes(screenModeValue)) {
+        if (record.Subtype === "Type 2"){
+          return false;
+        } 
+      }
+      if (record.Type === "Tiles" && record.Subtype === "Bitmap" && ["0", "1", "2", "3", "4"].includes(screenModeValue)){
+        return false;
+      }
+      if (record.Type === "Images" && !["5", "6", "7", "8", "10", "12"].includes(screenModeValue)){
+        return false;
+      } 
+      if (record.Type === "Fonts") {
+        if (!["0", "1", "2", "3", "4", "5", "6", "7", "8","10","12"].includes(screenModeValue)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+  codGeneratorMachine=document.getElementById("targetSelect").value;
+  codeGeneratorScreenMode=screenModeValue;
+  codeGeneratorItems=[];
+  codeGeneratorItems.push(dataStore.filter(r => r.Type === "Palettes" && r.ID.toString()===parseInt(paletteSelect, 10).toString())[0]);
+
+  filteredData.forEach(record => {
+    codeGeneratorItems.push(record); // Add record to debug array
+
+    const tr = document.createElement("tr");
+    const tdSelect = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true; // Check the checkbox by default
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        if (record.Type === "Fonts") {
+          const comboBox = document.querySelector(`#comboBox_${record.ID}`);
+          if (comboBox) {
+            record.exportType = comboBox.value;
+          }
+        }
+        codeGeneratorItems.push(record);
+      } else {
+        codeGeneratorItems = codeGeneratorItems.filter(r => r.ID !== record.ID);
+      }
+    });
+    tdSelect.appendChild(checkbox);
+    tr.appendChild(tdSelect);
+
+    const tdID = document.createElement("td");
+    tdID.textContent = record.ID;
+    tr.appendChild(tdID);
+
+    const tdDescription = document.createElement("td");
+    tdDescription.textContent = record.Description;
+    tr.appendChild(tdDescription);
+
+    const tdType = document.createElement("td");
+    tdType.textContent = record.Type;
+    tr.appendChild(tdType);
+
+    const tdSubtype = document.createElement("td");
+    tdSubtype.textContent = record.Subtype;
+    tr.appendChild(tdSubtype);
+
+    const tdFontMode = document.createElement("td");
+    if (record.Type === "Fonts") {
+      const fontModeSelect = document.createElement("select");
+      fontModeSelect.id = `comboBox_${record.ID}`;
+      const fontModes = getFontModesForScreen(screenModeValue);
+      fontModes.forEach(mode => {
+        const option = document.createElement("option");
+        option.value = mode;
+        option.textContent = mode;
+        fontModeSelect.appendChild(option);
+      });
+      tdFontMode.appendChild(fontModeSelect);
+    }
+    tr.appendChild(tdFontMode);
+
+    tbody.appendChild(tr);
+  });
+
+ 
+}
+
+function updateScreenModes() {
+  const target = document.getElementById("targetSelect").value;
+  const screenModeSelect = document.getElementById("screenModeSelect");
+  screenModeSelect.innerHTML = "";
+
+  let screenModes = [];
+  switch (target) {
+    case "MSX":
+      screenModes = ["Screen 0", "Screen 1", "Screen 2", "Screen 3"];
+      break;
+    case "MSX2":
+      screenModes = ["Screen 4", "Screen 5", "Screen 6", "Screen 7", "Screen 8"];
+      break;
+    case "MSX2+":
+      screenModes = ["Screen 10", "Screen 11", "Screen 12"];
+      break;
+    case "MSX Turbo-R":
+      screenModes = ["Screen 10", "Screen 11", "Screen 12"];
+      break;
+    case "V9990":
+      screenModes = ["P1", "P2", "B1", "B2", "B3", "B4"];
+      break;
+  }
+
+  screenModes.forEach(mode => {
+    const option = document.createElement("option");
+    option.value = mode;
+    option.textContent = mode;
+    screenModeSelect.appendChild(option);
+  });
+
+  updateFilteredGrid();
+}
+
+function getFontModesForScreen(screenMode) {
+  switch (screenMode) {
+    case "0":
+    return ["Text"];
+    case "1":
+    case "2":
+      return ["Text","Sprites"];
+    case "3":
+      return ["Sprites"];
+    case "4":
+      return ["Text","Sprites"];
+    case "5":
+    case "6":
+    case "7":
+    case "8":
+      return ["Bitmap", "Transparent bitmap", "VRAM","Sprites"];
+    case "10":
+    case "11":
+    case "12":
+      return ["Sprites"];
+    default:
+      return [];
+  }
+}
+
+document.getElementById("codeGeneratorCancelTop").addEventListener("click", () => {
+  document.getElementById("codeGeneratorModal").style.display = "none";
+});
+
+
+document.getElementById("codeGeneratorWrite").addEventListener("click", () => {
+  document.getElementById("codeGeneratorModal").style.display = "none";
+
+  // Update codeGeneratorItems with the selected export type for Fonts
+  codeGeneratorItems.forEach(record => {
+    if (record.Type === "Fonts") {
+      const comboBox = document.querySelector(`#comboBox_${record.ID}`);
+      if (comboBox) {
+        record.exportType = comboBox.value;
+      }
+    }
+  });
+
+  openCodeGeneratorDialog();
+});
+
+function openCodeGeneratorDialog() {
+  const overlay = document.getElementById("exportDialogOverlay");
+  const header = document.getElementById("exportDialogHeader");
+  const exportText = document.getElementById("exportText");
+
+  header.innerHTML = "MSXgl code generator";
+  header.style.fontSize = "20px";
+  header.style.fontWeight = "bold";
+
+
+  exportText.value = CreateCode(codeGeneratorItems, codeGeneratorScreenMode, codGeneratorMachine);
+
+  overlay.style.display = "flex";
+}
+
+document.getElementById("exportClose").addEventListener("click", () => {
+  document.getElementById("exportDialogOverlay").style.display = "none";
+});
+
+document.getElementById("exportCopy").addEventListener("click", async () => {
+  const exportText = document.getElementById("exportText").value;
+  try {
+    await navigator.clipboard.writeText(exportText);
+    alert("Text copied to clipboard!");
+  } catch (err) {
+    console.error("Failed to copy text: ", err);
+  }
+});
+
+function createCombinedImage(record, paletteRecord) {
+  const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
+  const [width, height] = record.Size.split('x').map(Number);
+  const numImages = images.length;
+  const numCols = Math.ceil(Math.sqrt(numImages));
+  const numRows = Math.ceil(numImages / numCols);
+  const totalWidth = width * numCols;
+  const totalHeight = height * numRows;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+
+  images.forEach((imageData, index) => {
+    const img = new Image();
+    img.onload = () => {
+      const col = index % numCols;
+      const row = Math.floor(index / numCols);
+      ctx.drawImage(img, width * col, height * row, width, height);
+      if (index === images.length - 1) {
+        document.getElementById("combinedImage").src = canvas.toDataURL();
+      }
+    };
+    img.src = imageData;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // ...existing code...cas
+
+  document.getElementById("imageDialogClose").addEventListener("click", () => {
+    document.getElementById("imageDialogOverlay").style.display = "none";
+  });
+
+  document.getElementById("imageDialogCopy").addEventListener("click", async () => {
+    const img = document.getElementById("combinedImage");
+    try {
+      const response = await fetch(img.src);
+      const blob = await response.blob();
+      const item = new ClipboardItem({ "image/png": blob });
+      await navigator.clipboard.write([item]);
+      //alert("Image copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy image: ", err);
+    }
+  });
+
+  const combinedImage = document.getElementById("combinedImage");
+  combinedImage.addEventListener("wheel", (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      let scale = parseFloat(combinedImage.style.transform.replace("scale(", "").replace(")", "")) || 1;
+      scale += e.deltaY < 0 ? 0.1 : -0.1;
+      scale = Math.max(0.1, scale);
+      combinedImage.style.transform = `scale(${scale})`;
+    }
+  });
+});
+
+function createCombinedImage(record, paletteRecord) {
+  const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
+  const [width, height] = record.Size.split('x').map(Number);
+  const numImages = images.length;
+  const numCols = Math.ceil(Math.sqrt(numImages));
+  const numRows = Math.ceil(numImages / numCols);
+  const totalWidth = width * numCols;
+  const totalHeight = height * numRows;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+
+  images.forEach((imageData, index) => {
+    const img = new Image();
+    img.onload = () => {
+      const col = index % numCols;
+      const row = Math.floor(index / numCols);
+      ctx.drawImage(img, width * col, height * row, width, height);
+      if (index === images.length - 1) {
+        document.getElementById("combinedImage").src = canvas.toDataURL();
+      }
+    };
+    img.src = imageData;
+  });
+}
 </script>
 </body>
 </html>

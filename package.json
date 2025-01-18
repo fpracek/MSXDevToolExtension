@@ -11,9 +11,6 @@
   ],
   "main": "./out/extension.js",
   "publisher": "fpracek",
-  "activationEvents": [
-    "onCommand:msxdevtool-extension.openWebview"
-  ],
   "contributes": {
     "commands": [
       {
