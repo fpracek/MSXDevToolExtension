@@ -1,0 +1,48 @@
+name: Build Addon
+
+# Trigger this workflow on pushes and pull requests to the 'main' branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    # Run on a matrix of operating systems: Windows, Linux, and macOS
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      # 1) Check out your repository code
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      # 2) Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18  # You can change this to any Node version you need
+
+      # 3) Build the addon using node-gyp
+      - name: Build Addon
+        run: |
+          # If your main package.json is in the root, you might run 'npm install' here:
+          # npm install
+          
+          cd addon
+          npm install -g node-gyp
+          node-gyp configure
+          node-gyp build
+
+      # 4) Upload the resulting .node file(s) as artifacts
+      - name: Upload compiled addon artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          # The artifact name will include the OS for clarity
+          name: myaddon-${{ matrix.os }}
+          # Path to the compiled addon. Adjust if necessary.
+          path: addon/build/Release/*.node
