@@ -22,7 +22,7 @@
       "conditions": [
        
         [
-          "OS=='win' and arch=='x64'",
+          "OS=='win' and 'arch'=='x64'",
           {
             "libraries": [
               "../libs/windows/FreeImage.lib"

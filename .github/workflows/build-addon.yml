@@ -115,6 +115,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v3
 
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
       - name: Build addon
         run: |
           npm install -g node-gyp
