@@ -25,7 +25,7 @@
           "OS=='win'",
           {
             "libraries": [
-              "E:\\Dropbox\\FAUSTO\\SVILUPPI\\MSX\\MSXDevToolExtension\\addon\\libs\\windows\\FreeImage.lib"
+              "../libs/windows/FreeImage.lib"
             ],
             "defines": ["_WINDOWS"]
           }
