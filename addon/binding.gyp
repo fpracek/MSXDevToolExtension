@@ -24,7 +24,7 @@
           "OS=='win' and 'arch'=='x64'",
           {
             "libraries": [
-              "../libs/windows/FreeImage.lib"
+              "<!(node -p \"'-L' + require('path').join(__dirname, 'libs/windows/FreeImage.lib')\")"
             ],
             "defines": ["_WINDOWS"]
           }
