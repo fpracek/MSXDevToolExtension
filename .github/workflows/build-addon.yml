@@ -7,6 +7,10 @@ on:
     branches: [ main ]
 
 jobs:
+
+  ##################################################
+  # 1) Windows x64
+  ##################################################
   build-windows-x64:
     runs-on: windows-latest
     steps:
@@ -17,11 +21,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
 
       - name: Build addon
         run: |
@@ -36,6 +35,9 @@ jobs:
           name: myaddon-windows-x64
           path: addon/build/Release/*.node
 
+  ##################################################
+  # 2) macOS x64
+  ##################################################
   build-macos-x64:
     runs-on: macos-latest
     steps:
@@ -46,11 +48,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
 
       - name: Build addon
         run: |
@@ -65,8 +62,17 @@ jobs:
           name: myaddon-macos-x64
           path: addon/build/Release/*.node
 
+  ##################################################
+  # 3) macOS ARM64 (requires Apple Silicon or cross-compilation)
+  ##################################################
   build-macos-arm64:
+    # Option A: If you have a self-hosted runner on an Apple Silicon machine:
+    # runs-on: self-hosted
+    # labels: [macos, arm64]
+
+    # Option B: If you want to attempt cross-compilation on an Intel mac runner:
     runs-on: macos-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
@@ -76,17 +82,17 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-
-      - name: Attempt ARM64 cross-compile on Intel mac
+      - name: Attempt ARM64 cross-compile on Intel mac (may require adjustments)
         run: |
           npm install -g node-gyp
+
+          # Example environment variables for cross-compilation
+          # You may need to adjust deployment target or clang flags to match your needs
           export CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
           export LDFLAGS="-arch arm64 -mmacosx-version-min=11.0"
+
           cd addon
+          # Pass extra flags to node-gyp if needed:
           node-gyp configure -- -f xcode
           node-gyp build
 
@@ -96,8 +102,13 @@ jobs:
           name: myaddon-macos-arm64
           path: addon/build/Release/*.node
 
+  ##################################################
+  # 4) Linux (older glibc) using Debian Bullseye Slim
+  ##################################################
   build-linux-glibc-old:
     runs-on: ubuntu-latest
+    # This container image is 'bullseye-slim'; it's not very old, but you could pick
+    # 'stretch', 'jessie', or 'centos:7' if you need an older glibc for broad compatibility.
     container:
       image: node:18-bullseye-slim
     steps:
@@ -108,7 +119,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
-
+          
       - name: Build addon
         run: |
           npm install -g node-gyp
@@ -122,6 +133,9 @@ jobs:
           name: myaddon-linux-glibc
           path: addon/build/Release/*.node
 
+  ##################################################
+  # 5) Linux Alpine (musl)
+  ##################################################
   build-linux-alpine:
     runs-on: ubuntu-latest
     container:
@@ -130,13 +144,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v3
 
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.x'
-
       - name: Build addon on Alpine (musl)
         run: |
+          # Alpine typically needs extra packages for building:
           apk add --no-cache python3 make g++
           npm install -g node-gyp
           cd addon
@@ -149,6 +159,9 @@ jobs:
           name: myaddon-alpine
           path: addon/build/Release/*.node
 
+  ##################################################
+  # 6) Linux ARM64
+  ##################################################
   build-linux-arm64:
     runs-on: ubuntu-latest
     steps:
@@ -164,6 +177,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y python3 make g++
+          # Install Node.js 18 via NodeSource:
           curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
           sudo apt-get install -y nodejs
           npm install -g node-gyp
@@ -171,6 +185,7 @@ jobs:
       - name: Build addon (ARM64 cross-compile)
         run: |
           cd addon
+          # Pass --arch=arm64 to node-gyp to indicate ARM64 build
           node-gyp configure --arch=arm64
           node-gyp build
 
