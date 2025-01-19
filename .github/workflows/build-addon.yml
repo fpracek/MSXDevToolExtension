@@ -11,6 +11,7 @@ jobs:
   build:
     # Run on a matrix of operating systems: Windows, Linux, and macOS
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
