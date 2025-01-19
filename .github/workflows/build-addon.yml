@@ -121,8 +121,15 @@ jobs:
           python-version: '3.x'
           
       - name: Build addon
-        run: |
+        run: 
+
+          apt-get update
+          apt-get install -y python3 make g++
+
+
           npm install -g node-gyp
+
+
           cd addon
           node-gyp configure
           node-gyp build
