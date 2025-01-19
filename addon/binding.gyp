@@ -24,7 +24,7 @@
           "OS=='win' and 'arch'=='x64'",
           {
             "libraries": [
-              "<!(node -p \"'-L' + require('path').join(__dirname, 'libs/windows/FreeImage.lib')\")"
+              "D:\a\MSXDevToolExtension\MSXDevToolExtension\addon\libs\windows\FreeImage.lib"
             ],
             "defines": ["_WINDOWS"]
           }
