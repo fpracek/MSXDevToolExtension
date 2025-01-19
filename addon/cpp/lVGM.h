@@ -26,6 +26,7 @@ enum LVGM_FREQ
 	LVGM_FREQ_60HZ     = 60,
 };
 
+
 // lVGM option
 enum LVGM_OPTION
 {
