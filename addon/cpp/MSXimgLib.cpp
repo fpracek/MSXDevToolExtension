@@ -165,8 +165,8 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 	param.bpc = params.bpc;
 
 	// Transparent color
-	if (params.transColor != NULL) {
-		if (sscanf(params.transColor, "%i", &param.transColor) != 1) {
+	if (params.transColor.c_str() != NULL) {
+		if (sscanf(params.transColor.c_str(), "%i", &param.transColor) != 1) {
 			strExitMessage="Error: Failed to parse transColor\n";
 			*exitMessage = (char*)malloc(strExitMessage.size() + 1); 
 			strcpy(*exitMessage, strExitMessage.c_str());
@@ -176,8 +176,8 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 	}
 
 	// Opacity color
-	if (params.opacityColor != NULL) {
-		if (sscanf(params.opacityColor, "%i", &param.opacityColor) != 1) {
+	if (params.opacityColor.c_str() != NULL) {
+		if (sscanf(params.opacityColor.c_str(), "%i", &param.opacityColor) != 1) {
 			strExitMessage="Error: Failed to parse opacityColor\n";
 			*exitMessage = (char*)malloc(strExitMessage.size() + 1);
 			strcpy(*exitMessage, strExitMessage.c_str());
@@ -201,7 +201,7 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 		param.palInput.clear();
 		for (int i = 0; i < 16; i++) {
 			u32 c24;
-			if (sscanf(params.inputPaletteColors[i], "%i", &c24) != 1) {
+			if (sscanf(params.inputPaletteColors[i].c_str(), "%i", &c24) != 1) {
 				strExitMessage= "Error: Failed to parse inputPaletteColors\n";
 				*exitMessage = (char*)malloc(strExitMessage.size() + 1);
 				strcpy(*exitMessage, strExitMessage.c_str());
@@ -414,7 +414,7 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 		for (int i = 0; i < 16; i++)
 		{
 			u32 c24;
-			if (sscanf(params.blockLayersTypeColors[i], "%i", &c24) != 1) {
+			if (sscanf(params.blockLayersTypeColors[i].c_str(), "%i", &c24) != 1) {
 				strExitMessage="Error: Failed to parse BlockLayersTypeColors\n";
 				*exitMessage = (char*)malloc(strExitMessage.size() + 1);
 				strcpy(*exitMessage, strExitMessage.c_str());

@@ -31,22 +31,22 @@
 		int numBlockX;
 		int numBlockY;
 		int bpc;
-		const char* transColor;
-		const char* opacityColor;
-		const char* paletteType;
-		const char* inputPaletteColors[16];
-		const char* dataTableName;
+		std::string transColor;
+		std::string opacityColor;
+		std::string paletteType;
+		std::string inputPaletteColors[16];
+		std::string dataTableName;
 		int palColoursCount;
 		int paletteOffset;
 		bool palette24bit;
-		const char* compressionMethod;
-		const char* ditherMethod;
-		const char* textDataFormat;
-		const char* asmType;
-		const char* exportMode;
+		std::string compressionMethod;
+		std::string ditherMethod;
+		std::string textDataFormat;
+		std::string asmType;
+		std::string exportMode;
 		bool skipEmptyBlock;
 		bool indexTable;
-		const char* copyrightText;
+		std::string copyrightText;
 		bool exportDataHeader;
 		bool addFontDataHeader;
 		int fontHeaderFirst;
@@ -57,12 +57,12 @@
 		bool addCDefine;
 		int offset;
 		bool noTitle;
-		const char* blockLayersType;
+		std::string blockLayersType;
 		int blockLayersTypePosX;					///< Start X position for the layer (relative to block coordante)
 		int blockLayersTypePosY;					///< Start Y position for the layer (relative to block coordante)
 		int blockLayersTypeNumX;					///< Width of the layer (in sprite size unit)
 		int blockLayersTypeNumY;					///< Height of the layer (in sprite size unit)
-		char* blockLayersTypeColors[16];
+		std::string blockLayersTypeColors[16];
 		bool bloadHeader;
 		bool tilesCompression;
 		bool gm2CompressionNames;
@@ -118,8 +118,8 @@
 			numBlockX = 1;
 			numBlockY = 1;
 			bpc = 8;
-			transColor = 0x000000;
-			opacityColor = 0x000000;
+			transColor = "0x000000";
+			opacityColor = "0x000000";
 			paletteType = "msx1";
 			dataTableName = "";
 			palColoursCount = -1;

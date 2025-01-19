@@ -22,6 +22,21 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
+const os = require('os');
+
+function getNativeModule() {
+  const platform = os.platform();  // 'win32', 'darwin', 'linux'
+  const arch = os.arch();          // 'x64', 'arm64', ...
+
+  // Costruisci il nome del file .node in base a platform+arch
+  let addonName = `MSXimgLib.node`;
+
+  // Path nella cartella dell'estensione
+  const addonPath = path.join(__dirname, 'addon', 'bin', addonName);
+
+  return require(addonPath);
+}
+
 interface DataObject {
   Type: string;
   Subtype: string;

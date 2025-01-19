@@ -82,7 +82,7 @@ inline std::string ToUpper(const std::string& str)
 }
 
 /// Check if 2 string are equal
-inline bool StrEqual(const c8* str1, const c8* str2, bool bCaseInsensitive = true)
+inline bool StrEqual(std::string str1, std::string str2, bool bCaseInsensitive = true)
 {
 	if(bCaseInsensitive)
 	{
@@ -92,7 +92,7 @@ inline bool StrEqual(const c8* str1, const c8* str2, bool bCaseInsensitive = tru
 		return (strcmp(ToLower(out1).c_str(), ToLower(out2).c_str()) == 0);
 	}
 	else
-		return (strcmp(str1, str2) == 0);
+		return (strcmp(str1.c_str(), str2.c_str()) == 0);
 }
 
 /// Remove the filename extension (if any)
