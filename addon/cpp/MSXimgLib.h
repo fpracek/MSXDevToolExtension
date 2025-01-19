@@ -163,7 +163,7 @@
 	/// @param exitMessage Exit message
 	/// @param exportedData Exported data
 	/// @return 0 if succeed, -1 if failed
-	LIBRARY_API int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** exportedData);
+	LIBRARY_API int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMessage, std::string &exportedData);
 
 
 

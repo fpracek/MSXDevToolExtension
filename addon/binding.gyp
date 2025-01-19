@@ -18,6 +18,9 @@
         "<!(node -p \"require('path').join(__dirname, 'libs', 'include')\")",
         "<!(node -p \"require('path').join(__dirname, '..', 'node_modules', 'node-addon-api')\")"                     
       ],
+      "defines": [
+        "NAPI_CPP_EXCEPTIONS"
+      ],
       
 
       "conditions": [

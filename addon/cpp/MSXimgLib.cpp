@@ -76,11 +76,13 @@ Napi::Value ProcessImage(const Napi::CallbackInfo& info) {
   params.opacityColor = info[12].As<Napi::String>();
   {
     Napi::Array arr = info[13].As<Napi::Array>();
-    for (uint32_t i = 0; i < arr.Length(); ++i) {
-      if (arr.Get(i).IsString()) {
-        params.inputPaletteColors.push_back(arr.Get(i).As<Napi::String>());
-      }
+	if (arr.Length() <= 16){
+	  for (uint32_t i = 0; i < arr.Length() && i < 16; ++i) {
+	    params.inputPaletteColors[i] = arr.Get(i).As<Napi::String>();
+	  }
     }
+ 
+    
   }
   params.paletteOffset = info[14].As<Napi::Number>().Int32Value();
   params.asmType = info[15].As<Napi::String>();
@@ -144,7 +146,7 @@ bool FileExists(const std::string& filename)
 
 
 
-int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** exportedData)
+int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMessage, std::string &exportedData)
 {
 	std::string strExitMessage;
 
