@@ -85,15 +85,8 @@ jobs:
       - name: Attempt ARM64 cross-compile on Intel mac (may require adjustments)
         run: |
           npm install -g node-gyp
-
-          # Example environment variables for cross-compilation
-          # You may need to adjust deployment target or clang flags to match your needs
-          export CXXFLAGS="-arch arm64 -mmacosx-version-min=11.0"
-          export LDFLAGS="-arch arm64 -mmacosx-version-min=11.0"
-
           cd addon
-          # Pass extra flags to node-gyp if needed:
-          node-gyp configure -- -f xcode
+          node-gyp configure -- -f make
           node-gyp build
 
       - name: Upload artifact
