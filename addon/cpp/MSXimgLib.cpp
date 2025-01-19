@@ -705,7 +705,7 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 			bSucceed = ParseImage(&param, exp, data);
 			*exportedData = (char*)malloc(data.size() + 1); // +1 per il terminatore null
 			if (*exportedData != NULL) {
-				std::strcpy(*exportedData, data.c_str());
+				strcpy(*exportedData, data.c_str());
 			}
 			
 			size = exp->GetTotalBytes();
