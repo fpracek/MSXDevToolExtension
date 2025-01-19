@@ -204,7 +204,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 		if (sscanf(params.transColor.c_str(), "%i", &param.transColor) != 1) {
 			strExitMessage="Error: Failed to parse transColor\n";
 			*exitMessage = (char*)malloc(strExitMessage.size() + 1); 
-			strcpy(*exitMessage, strExitMessage.c_str());
+			exitMessage = strExitMessage;
 			return -1;
 		}
 		param.bUseTrans = true;
@@ -215,7 +215,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 		if (sscanf(params.opacityColor.c_str(), "%i", &param.opacityColor) != 1) {
 			strExitMessage="Error: Failed to parse opacityColor\n";
 			*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-			strcpy(*exitMessage, strExitMessage.c_str());
+			exitMessage = strExitMessage;
 			return -1;
 		}
 		param.bUseOpacity = true;
@@ -239,7 +239,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			if (sscanf(params.inputPaletteColors[i].c_str(), "%i", &c24) != 1) {
 				strExitMessage= "Error: Failed to parse inputPaletteColors\n";
 				*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-				strcpy(*exitMessage, strExitMessage.c_str());
+				exitMessage = strExitMessage;
 				return -1;
 			}
 			param.palInput.push_back(c24);
@@ -452,7 +452,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			if (sscanf(params.blockLayersTypeColors[i].c_str(), "%i", &c24) != 1) {
 				strExitMessage="Error: Failed to parse BlockLayersTypeColors\n";
 				*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-				strcpy(*exitMessage, strExitMessage.c_str());
+				exitMessage = strExitMessage;
 				return -1;
 			}
 			l.colors.push_back(c24);
@@ -595,7 +595,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			{
 				strExitMessage= "Compression not avaible!\n";
 				*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-				strcpy(*exitMessage, strExitMessage.c_str());
+				exitMessage = strExitMessage;
 				return -1;
 			}
 		}
@@ -618,7 +618,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 	{
 		strExitMessage= "Error: Input image required!\n";
 		*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-		strcpy(*exitMessage, strExitMessage.c_str());
+		exitMessage = strExitMessage;
 		return -1;
 	}
 	
@@ -629,7 +629,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			+ std::to_string(param.bpc)
 			+ "). Only 1, 2, 4, 8 or 16-bits colors are supported!\n";
 		*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-		strcpy(*exitMessage, strExitMessage.c_str());
+		exitMessage = strExitMessage;
 		return -1;
 	}
 	if ((param.bAddCopy) && (!FileExists(param.copyrightText)))
@@ -638,21 +638,21 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			+ param.copyrightText
 			+ ")!\n";
 		*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-		strcpy(*exitMessage, strExitMessage.c_str());
+		exitMessage = strExitMessage;
 		return -1;
 	}
 	if (param.bUseTrans && param.bUseOpacity)
 	{
 		strExitMessage= "Error: Transparency and Opacity can't be use together!\n";
 		*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-		strcpy(*exitMessage, strExitMessage.c_str());
+		exitMessage = strExitMessage;
 		return -1;
 	}
 	if (((param.bpc == 2) || (param.bpc == 4)) && (param.palCount < 1))
 	{
 		strExitMessage="Error: Palette count can't be less that 1 with 2-bits and 4-bits color mode!\n";
 		*exitMessage = (char*)malloc(strExitMessage.size() + 1);
-		strcpy(*exitMessage, strExitMessage.c_str());
+		exitMessage = strExitMessage;
 		return -1;
 	}
 
@@ -707,7 +707,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 	}
 
 	*exitMessage = (char*)malloc(warningMessages.size() + 1);
-	strcpy(*exitMessage, warningMessages.c_str());
+	exitMessage=warningMessages;
 
 	bool bSucceed = false;
 	u32 size = 0;
@@ -740,7 +740,7 @@ int ImagePocessing(const ImagePocessingParameters& params, std::string &exitMess
 			bSucceed = ParseImage(&param, exp, data);
 			*exportedData = (char*)malloc(data.size() + 1); // +1 per il terminatore null
 			if (*exportedData != NULL) {
-				strcpy(*exportedData, data.c_str());
+				exportedData=data;
 			}
 			
 			size = exp->GetTotalBytes();

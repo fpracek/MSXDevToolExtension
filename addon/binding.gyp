@@ -21,7 +21,9 @@
       "defines": [
         "NAPI_CPP_EXCEPTIONS"
       ],
-      
+      "cflags_cc": [
+        "-fexceptions"
+      ],
 
       "conditions": [
        
