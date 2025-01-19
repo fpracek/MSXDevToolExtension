@@ -32,10 +32,85 @@
 #include <vector>
 #include <cctype>
 
+#include <napi.h>
 
 
 
 
+Napi::Value ProcessImage(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+
+  bool success = false;         
+  std::string data;             
+  std::string messages;         
+  
+
+  if (info.Length() < 23) {
+    Napi::Object result = Napi::Object::New(env);
+    result.Set("success", Napi::Boolean::New(env, false));
+    result.Set("data", Napi::String::New(env, ""));
+    result.Set("messages", Napi::String::New(env, "Not enough arguments. They must be 23."));
+	return result;
+  }
+
+
+  
+
+  
+
+  
+  ImagePocessingParameters params;
+
+  params.inputImage = info[0].As<Napi::String>();
+  params.exportType = info[1].As<Napi::String>();
+  params.startPosX = info[2].As<Napi::Number>().Int32Value();
+  params.startPosY = info[3].As<Napi::Number>().Int32Value();
+  params.sizeX = info[4].As<Napi::Number>().Int32Value();
+  params.sizeY = info[5].As<Napi::Number>().Int32Value();
+  params.gapX = info[6].As<Napi::Number>().Int32Value();
+  params.gapY = info[7].As<Napi::Number>().Int32Value();
+  params.numBlockX = info[8].As<Napi::Number>().Int32Value();
+  params.numBlockY = info[9].As<Napi::Number>().Int32Value();
+  params.bpc = info[10].As<Napi::Number>().Int32Value();
+  params.transColor = info[11].As<Napi::String>();
+  params.opacityColor = info[12].As<Napi::String>();
+  {
+    Napi::Array arr = info[13].As<Napi::Array>();
+    for (uint32_t i = 0; i < arr.Length(); ++i) {
+      if (arr.Get(i).IsString()) {
+        params.inputPaletteColors.push_back(arr.Get(i).As<Napi::String>());
+      }
+    }
+  }
+  params.paletteOffset = info[14].As<Napi::Number>().Int32Value();
+  params.asmType = info[15].As<Napi::String>();
+  params.exportMode = info[16].As<Napi::String>();
+  params.skipEmptyBlock = info[17].As<Napi::Boolean>();
+  params.copyrightText = info[18].As<Napi::String>();
+  params.fontHeaderFirst = info[19].As<Napi::Number>().Int32Value();
+  params.fontHeaderLast = info[20].As<Napi::Number>().Int32Value();
+  params.fontHeaderX = info[21].As<Napi::Number>().Int32Value();
+  params.fontHeaderY = info[22].As<Napi::Number>().Int32Value();
+
+
+  int callResult = ImagePocessing(params, &messages, &data);
+
+  Napi::Object result = Napi::Object::New(env);
+  result.Set("success", Napi::Boolean::New(env, callResult>0));
+  result.Set("data", Napi::String::New(env, data));
+  result.Set("messages", Napi::String::New(env, messages));
+
+
+  return result;
+
+}
+
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+  exports.Set("processImage", Napi::Function::New(env, ProcessImage));
+  return exports;
+}
+
+NODE_API_MODULE(addon, Init)
 
 
 
@@ -67,48 +142,6 @@ bool FileExists(const std::string& filename)
 	return false;
 }
 
-/// Check if 2 string are equal
-//bool MSX::StrEqual(const c8* str1, const c8* str2)
-//{
-//	return (_stricmp(str1, str2) == 0);
-//}
-
-//-----------------------------------------------------------------------------
-// Main
-//-----------------------------------------------------------------------------
-
-
-
-// Debug
-//const char* ARGV[] = { "", "testcases/cars.png", "-out", "testcases/sprt_car_1.h", "-pos", "0", "0", "-size", "13", "11", "-num", "16", "1", "-name", "g_Car1", "-trans", "0xE300E3", "-compress", "cropline16", "-copy", "testcases/cmsx.txt" };
-//const char* ARGV[] = { "", "testcases/cars.png", "-out", "testcases/sprt_car_1.h", "-pos", "0", "0", "-size", "13", "11", "-num", "16", "1", "-name", "g_Car1", "-trans", "0xE300E3", "-compress", "cropline32" };
-//const char* ARGV[] = { "", "testcases/track_tiles.png", "-out", "testcases/sprt_track.h", "-pos", "0", "0", "-size", "32", "32", "-num", "8", "4", "-name", "g_TrackTiles", "-trans", "0xDA48AA", "-bpc", "1", "-compress", "crop256", "-dither", "cluster8" };
-//const char* ARGV[] = { "", "testcases/test_sprt.png", "-out", "testcases/sprt_player.h", "-pos", "0", "0", "-size", "16", "16", "-num", "11", "8", "-name", "g_PlayerSprite", "-trans", "0x336600", "-bpc", "4", "-pal", "custom", "-compress", "best" };
-//const char* ARGV[] = { "", "testcases/cmsx_9.png", "-out", "testcases/cmsx_9.h", "-pos", "0", "0", "-size", "8", "12", "-gap", "0", "4", "-num", "16", "6", "-name", "cmsx_9", "-trans", "0x000000", "-bpc", "1", "-skip", "-font", "8", "8", "!", "_" };
-//const char* ARGV[] = { "", "testcases/Court.png", "-out", "testcases/court.h", "-name", "g_Court", "-mode", "g2" };
-//const char* ARGV[] = { "", "testcases/players16.png", "-out", "testcases/players16.h", "-mode", "s16", "-pos", "0", "0", "-size", "16", "24", "-num", "13", "1", };
-//const char* ARGV[] = { "", "testcases/players.png", "-out", "testcases/players.h", "-mode", "sprt", "-pos", "0", "0", "-size", "16", "32", "-num", "9", "3", "-name", "g_Player1", "-compress", "rlep", "-at", "0x0010",
-//	"-l", "i16", "0", "0",  "1", "1", "0x010101",													// Black 1
-//	"-l", "i16", "0", "0",  "1", "1", "0x010101", "0x5955E0", "0x3AA241", "0xCCCCCC", "0xDB6559",	// Black 2
-//	"-l", "i16", "0", "8",  "1", "1", "0x8076F1", "0x3EB849", "0x5955E0", "0x3AA241",				// Cloth
-//	"-l", "i16", "0", "0",  "1", "1", "0xFFFFFF", "0xCCCCCC",										// White
-//	"-l", "i16", "0", "0",  "1", "1", "0xFF897D", "0xDB6559",										// Skin
-//	"-l", "i8",  "0", "16", "2", "1", "0x010101",													// Black 1
-//	"-l", "i8",  "0", "16", "2", "1", "0x010101", "0x5955E0", "0x3AA241", "0xCCCCCC", "0xDB6559",	// Black 2
-//	"-l", "i8",  "0", "16", "2", "1", "0xFFFFFF", "0xCCCCCC",										// White
-//	"-l", "i8",  "0", "16", "2", "1", "0xFF897D", "0xDB6559" };										// Skin
-//const char* ARGV[] = { "", "testcases/score.png", "-out", "testcases/data_score.h", "-mode", "gm2", "-def", "-name", "g_DataScore", "-pos", "0", "0", "-size", "216", "80", "-compress", "rlep",
-//	"-l", "gm2",   "0",  "88", "112", "96",
-//	"-l", "gm2", "112",  "80",  "72", "24",
-//	"-l", "gm2", "184",  "80",  "72", "24",
-//	"-l", "gm2", "112", "104",  "72", "16",
-//	"-l", "gm2", "184", "104",  "72", "16", };
-//const char* ARGV[] = { "", "testcases/menu.png", "-out", "select.h", "-mode", "gm2", "-name", "g_DataSelect", "-pos", "0", "0", "-size", "256", "96" };
-//const char* ARGV[] = { "", "../testcases/poc2.png", "-out", "../testcases/room5.h", "-mode", "gm1", "--noTilesName", "", "-name", "g_DataRoom0", "-pos", "0", "0", "-size", "256", "192" };
-//const char* ARGV[] = { "", "../testcases/poc2.png", "-out", "../testcases/room5.bas", "-format", "bas", "-data", "hexaraw", "-mode", "gm1", "-name", "g_DataRoom0", "-pos", "0", "0", "-size", "256", "192" };
-//const char* ARGV[] = { "", "../testcases/JoyAndHeron", "-out", "../testcases/JoyAndHeron.mglv", "-mode", "mglv", "-format", "bin", "-size", "256", "144", "-bpc", "4", "-pal", "custom" };
-//#define DEBUG_ARGS
-
 
 
 int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** exportedData)
@@ -132,15 +165,15 @@ int ImagePocessing(ImagePocessingParameters params, char** exitMessage, char** e
 	param.inputImage = params.inputImage;
 
 	// Image format
-	if (MSX::StrEqual(params.imageformat, "auto"))
+	if (MSX::StrEqual(params.imageFormat, "auto"))
 		outFormat = MSX::FILEFORMAT_Auto;
-	else if (MSX::StrEqual(params.imageformat, "c"))
+	else if (MSX::StrEqual(params.imageFormat, "c"))
 		outFormat = MSX::FILEFORMAT_C;
-	else if (MSX::StrEqual(params.imageformat, "asm"))
+	else if (MSX::StrEqual(params.imageFormat, "asm"))
 		outFormat = MSX::FILEFORMAT_Asm;
-	else if (MSX::StrEqual(params.imageformat, "bas"))
+	else if (MSX::StrEqual(params.imageFormat, "bas"))
 		outFormat = MSX::FILEFORMAT_BASIC;
-	else if (MSX::StrEqual(params.imageformat, "bin"))
+	else if (MSX::StrEqual(params.imageFormat, "bin"))
 		outFormat = MSX::FILEFORMAT_Bin;
 
 

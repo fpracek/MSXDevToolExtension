@@ -19,9 +19,9 @@
 	/// Image processing parameters
 	struct ImagePocessingParameters
 	{
-		const char* inputImage;
-		const char* exportType;
-		const char* imageformat;
+		std::string inputImage;
+		std::string exportType;
+		std::string imageFormat;
 		int startPosX;
 		int startPosY;
 		int sizeX;
@@ -108,7 +108,7 @@
 			inputPaletteColors[15] = {};
 			inputImage = "";
 			exportType = "c";
-			imageformat = "auto";
+			imageFormat = "auto";
 			startPosX = 0;
 			startPosY = 0;
 			sizeX = 0;
