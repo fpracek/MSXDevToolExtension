@@ -14,7 +14,7 @@
         "cpp/RLEp.cpp"
       ],
       "include_dirs": [
-        "cpp",
+        "./cpp",
         "<!(node -p \"require('path').join(__dirname, 'libs', 'include')\")"                                 
       ],
       
