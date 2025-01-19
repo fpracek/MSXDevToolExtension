@@ -16,7 +16,7 @@
       "include_dirs": [
         "./cpp",
         "<!(node -p \"require('path').join(__dirname, 'libs', 'include')\")",
-        "<!(node -p \"require('node-addon-api').include\")"                                
+        "<!(node -p \"require('path').join(__dirname, '..', 'node_modules', 'node-addon-api')\")"                     
       ],
       
 
