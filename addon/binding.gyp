@@ -18,18 +18,32 @@
         "<!(node -p \"require('path').join(__dirname, 'libs', 'include')\")"                                 
       ],
       
+
       "conditions": [
        
         [
-          "OS=='win' and 'arch'=='x64'",
+          "OS=='win'",
           {
             "libraries": [
-              "D:\\a\\MSXDevToolExtension\\MSXDevToolExtension\\addon\\libs\\windows\\FreeImage.lib"
+              "..\\libs\\windows\\FreeImage.lib"
             ],
             "defines": ["_WINDOWS"]
           }
         ],
 
+ 
+        [
+          "OS=='mac' and 'arch'=='x64'",
+          {
+            "libraries": [
+              "<!(node -p \"'-L' + require('path').join(__dirname, 'libs/osx')\")",
+              "-lfreeimage"
+            ],
+            "defines": ["_MACOS", "_MACOS_X64"]
+          }
+        ],
+
+       
         [
           "OS=='mac' and 'arch'=='arm64'",
           {
