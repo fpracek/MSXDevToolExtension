@@ -22,7 +22,7 @@
       "conditions": [
        
         [
-          "OS=='win'",
+          "OS=='win' and arch=='x64'",
           {
             "libraries": [
               "../libs/windows/FreeImage.lib"
@@ -31,19 +31,6 @@
           }
         ],
 
- 
-        [
-          "OS=='mac' and 'arch'=='x64'",
-          {
-            "libraries": [
-              "<!(node -p \"'-L' + require('path').join(__dirname, 'libs/osx')\")",
-              "-lfreeimage"
-            ],
-            "defines": ["_MACOS", "_MACOS_X64"]
-          }
-        ],
-
-       
         [
           "OS=='mac' and 'arch'=='arm64'",
           {
