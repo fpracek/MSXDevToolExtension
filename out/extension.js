@@ -18,15 +18,99 @@
  * You should have received a copy of the GNU General Public License
  * along with MSXDev Tool Extension for VS Code. If not, see <https://www.gnu.org/licenses/>.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deactivate = exports.activate = void 0;
-const vscode = require("vscode");
-const path = require("path");
-const fs = require("fs");
+exports.deactivate = exports.activate = exports.replaceTagInFiles = void 0;
+const vscode = __importStar(require("vscode"));
+const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
+const os = require('os');
 let mainPanel = null;
 let detailsPanel = null;
 let targetedDetailsPanel = null;
 let selectedCells = []; // Variable to store selected cells
+async function replaceTagInFiles(language, id, data) {
+    console.log("language: ", language);
+    const prefix = language === 'asm' ? '; ' : '// ';
+    try {
+        // Trova tutti i file del workspace
+        const files = await vscode.workspace.findFiles('**/*');
+        for (const file of files) {
+            // Apri il file come TextDocument
+            const doc = await vscode.workspace.openTextDocument(file);
+            // Leggi il contenuto
+            let content = doc.getText();
+            let lines = content.split(/\r?\n/);
+            let changed = false;
+            let i = 0;
+            while (i < lines.length) {
+                const beginText = `${prefix}${id} BEGIN`;
+                if (lines[i].includes(beginText)) {
+                    const beginIndex = i;
+                    i++;
+                    const endText = `${prefix}${id} END`;
+                    while (i < lines.length && !lines[i].includes(endText)) {
+                        i++;
+                    }
+                    if (i < lines.length) {
+                        const endIndex = i;
+                        // Righe da inserire
+                        const dataLines = data.split(/\r?\n/);
+                        // Sostituzione delle righe
+                        lines.splice(beginIndex + 1, (endIndex - 1) - (beginIndex + 1) + 1, ...dataLines);
+                        i = beginIndex + 1 + dataLines.length + 1;
+                        changed = true;
+                    }
+                    else {
+                        break;
+                    }
+                }
+                else {
+                    i++;
+                }
+            }
+            if (changed) {
+                const newContent = lines.join('\n');
+                // Qui costruiamo un WorkspaceEdit anziché scrivere solo su fs
+                const edit = new vscode.WorkspaceEdit();
+                // L'intero range del file è da 0 a content.length
+                const fullRange = new vscode.Range(doc.positionAt(0), doc.positionAt(content.length));
+                // Applichiamo la sostituzione
+                edit.replace(doc.uri, fullRange, newContent);
+                // Applichiamo l'edit per aggiornare l'editor se il file è aperto
+                await vscode.workspace.applyEdit(edit);
+                // Opzionalmente salviamo anche su disco (se vuoi)
+                //await doc.save();
+            }
+        }
+    }
+    catch (error) {
+        console.error('Errore durante la sostituzione dei tag: ', error);
+    }
+}
+exports.replaceTagInFiles = replaceTagInFiles;
 function activate(context) {
     // Dispose of any open panels on activation
     if (mainPanel) {
@@ -45,7 +129,7 @@ function activate(context) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
         const workspacePath = workspaceFolders[0].uri.fsPath;
-        const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+        const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
         const dataPath = path.join(folderPath, 'Objects.json');
         if (!fs.existsSync(folderPath)) {
             fs.mkdirSync(folderPath);
@@ -63,7 +147,8 @@ function activate(context) {
                     Values: getDefaultMSXColors(false),
                     FirstFontChar: "",
                     LastFontChar: "",
-                    FontSpaces: ""
+                    FontSpaces: "",
+                    TagName: "MSXStandardPalette"
                 },
                 {
                     Type: "Palettes",
@@ -76,7 +161,8 @@ function activate(context) {
                     Values: getDefaultMSXColors(true),
                     FirstFontChar: "",
                     LastFontChar: "",
-                    FontSpaces: ""
+                    FontSpaces: "",
+                    TagName: "MSX2StandardPalette"
                 }
             ];
             fs.writeFileSync(dataPath, JSON.stringify(defaultData), 'utf8');
@@ -112,8 +198,8 @@ function activate(context) {
 }
 exports.activate = activate;
 function initializeMainPanel(context, loadedData) {
-    mainPanel = vscode.window.createWebviewPanel('msxSpriteGridEditor', // Internal identifier
-    'MSX Objects editor', // Visible title
+    mainPanel = vscode.window.createWebviewPanel('msxDevToolExtension', // Internal identifier
+    'MSXDevTool', // Visible title
     vscode.ViewColumn.One, // Column to show the webview in
     {
         enableScripts: true,
@@ -136,15 +222,35 @@ function initializeMainPanel(context, loadedData) {
     const htmlPath = path.join(context.extensionPath, 'media', 'index.html');
     let htmlContent = fs.readFileSync(htmlPath, 'utf8');
     const scriptUri = mainPanel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, "media", "utils.js"));
-    htmlContent = htmlContent.replace(/<script\s+src=["'].*utils\.js["']\s*>/, `<script src="${scriptUri}">`);
+    //htmlContent = htmlContent.replace(
+    //  /<script\s+src=["'].*utils\.js["']\s*>/,
+    //  `<script src="${scriptUri}">`
+    //);
     const scriptThiefUri = mainPanel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, "media", "colorThief.js"));
-    console.log(scriptThiefUri);
-    htmlContent = htmlContent.replace(/<script\s+src=["'].*colorThief\.js["']\s*>/, `<script src="${scriptThiefUri}">`);
+    const MSXimgLibUri = mainPanel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, "media", "MSXimgLib.js"));
+    //htmlContent = htmlContent.replace(
+    //  /<script\s+src=["'].*colorThief\.js["']\s*>/,
+    //  `<script src="${scriptThiefUri}">`
+    //);
+    const wasmPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'MSXimgLib.wasm');
+    const wasmUri = mainPanel.webview.asWebviewUri(wasmPath).toString();
+    function codeSync(language, id, data) {
+        replaceTagInFiles(language, id, data);
+    }
+    htmlContent = htmlContent.replace('utils_js_URI', scriptUri.toString());
+    //htmlContent = htmlContent.replace('initWasm_js_URI', wasmUri.toString());
+    htmlContent = htmlContent.replace('thiefColor_js_URI', scriptThiefUri.toString());
+    htmlContent = htmlContent.replace('MSXimgLib_js_URI', MSXimgLibUri.toString());
+    htmlContent = htmlContent.replace('WASM_URI_PLACEHOLDER', wasmUri);
     // Set the HTML content in the panel
     mainPanel.webview.html = htmlContent;
     // Send the loaded data to the webview
     mainPanel.webview.onDidReceiveMessage(message => {
+        console.log('Message received:', message);
         switch (message.command) {
+            case 'CodeSynch':
+                codeSync(message.language, message.id, message.data);
+                return;
             case 'saveDataStore':
                 saveDataToFile(message.data);
                 return;
@@ -321,7 +427,7 @@ function loadDataFromFile() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
         const workspacePath = workspaceFolders[0].uri.fsPath;
-        const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+        const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
         const dataPath = path.join(folderPath, 'Objects.json');
         data = fs.readFileSync(dataPath, 'utf8');
     }
@@ -382,7 +488,7 @@ function saveDataToFile(data) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (workspaceFolders && workspaceFolders.length > 0) {
         const workspacePath = workspaceFolders[0].uri.fsPath;
-        const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+        const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
         const dataPath = path.join(folderPath, 'Objects.json');
         console.log(`Saving data to: ${dataPath}`);
         try {

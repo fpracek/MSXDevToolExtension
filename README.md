@@ -13,3 +13,5 @@ fpracek@gmail.com
 ![Sprites import](./images/SpritesImport.gif)
 ![Type 2 sprites](./images/Sprites2.gif)
 ![Animations](./images/Animations.gif)
+![Arrays exports](./images/Export.gif)
+![Code synch](./images/Synch.gif)

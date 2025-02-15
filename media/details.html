@@ -873,7 +873,6 @@
           toggleOrOption(row);
         });
         if (record.Type === "Images") {
-          console.log("Images");
           document.getElementById('toggleGrid').style.display = 'none';
           document.getElementById('toggleGridLabel').style.display = 'none';
         }
@@ -1863,9 +1862,6 @@
           return;
         }
       }
-      console.log("index",index,focusedId);
-      console.log("imageList",imageList);
-      console.log("patternsList",patternsList);
       if (index !== -1) {
         imageList.splice(index, 1);
         currentRecord.Values = currentRecord.Values.filter(val => val.ID != focusedId);

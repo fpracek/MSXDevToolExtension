@@ -21,21 +21,16 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
+
 
 const os = require('os');
 
-function getNativeModule() {
-  const platform = os.platform();  // 'win32', 'darwin', 'linux'
-  const arch = os.arch();          // 'x64', 'arm64', ...
 
-  // Costruisci il nome del file .node in base a platform+arch
-  let addonName = `MSXimgLib.node`;
 
-  // Path nella cartella dell'estensione
-  const addonPath = path.join(__dirname, 'addon', 'bin', addonName);
 
-  return require(addonPath);
-}
+
+
 
 interface DataObject {
   Type: string;
@@ -50,12 +45,97 @@ interface DataObject {
   LastFontChar: string;
   FontSpaces: string;
   EditingSettings?: object;
+  TagName?: string;
 }
 
 let mainPanel: vscode.WebviewPanel | null = null;
 let detailsPanel: vscode.WebviewPanel | null = null;
 let targetedDetailsPanel: vscode.WebviewPanel | null = null;
 let selectedCells: any[] = []; // Variable to store selected cells
+
+
+
+export async function replaceTagInFiles(language: string, id: string, data: string) {
+    console.log("language: ", language);
+    const prefix = language === 'asm' ? '; ' : '// ';
+
+    try {
+        // Trova tutti i file del workspace
+        const files = await vscode.workspace.findFiles('**/*');
+        
+        for (const file of files) {
+            // Apri il file come TextDocument
+            const doc = await vscode.workspace.openTextDocument(file);
+            
+            // Leggi il contenuto
+            let content = doc.getText();
+            let lines = content.split(/\r?\n/);
+            let changed = false;
+            
+            let i = 0;
+            while (i < lines.length) {
+                const beginText = `${prefix}${id} BEGIN`;
+                if (lines[i].includes(beginText)) {
+                    const beginIndex = i;
+                    i++;
+                    
+                    const endText = `${prefix}${id} END`;
+                    while (i < lines.length && !lines[i].includes(endText)) {
+                        i++;
+                    }
+                    
+                    if (i < lines.length) {
+                        const endIndex = i;
+                        
+                        // Righe da inserire
+                        const dataLines = data.split(/\r?\n/);
+                        
+                        // Sostituzione delle righe
+                        lines.splice(
+                            beginIndex + 1,
+                            (endIndex - 1) - (beginIndex + 1) + 1,
+                            ...dataLines
+                        );
+                        
+                        i = beginIndex + 1 + dataLines.length + 1;
+                        changed = true;
+                    } else {
+                        break; 
+                    }
+                } else {
+                    i++;
+                }
+            }
+
+            if (changed) {
+                const newContent = lines.join('\n');
+
+                // Qui costruiamo un WorkspaceEdit anziché scrivere solo su fs
+                const edit = new vscode.WorkspaceEdit();
+
+                // L'intero range del file è da 0 a content.length
+                const fullRange = new vscode.Range(
+                    doc.positionAt(0),
+                    doc.positionAt(content.length)
+                );
+
+                // Applichiamo la sostituzione
+                edit.replace(doc.uri, fullRange, newContent);
+
+                // Applichiamo l'edit per aggiornare l'editor se il file è aperto
+                await vscode.workspace.applyEdit(edit);
+
+                // Opzionalmente salviamo anche su disco (se vuoi)
+                //await doc.save();
+            }
+        }
+    } catch (error) {
+        console.error('Errore durante la sostituzione dei tag: ', error);
+    }
+}
+
+
+
 
 export function activate(context: vscode.ExtensionContext) {
   // Dispose of any open panels on activation
@@ -77,7 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
     const workspacePath = workspaceFolders[0].uri.fsPath;
-    const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+    const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
     const dataPath = path.join(folderPath, 'Objects.json');
 
     if (!fs.existsSync(folderPath)) {
@@ -97,7 +177,8 @@ export function activate(context: vscode.ExtensionContext) {
           Values: getDefaultMSXColors(false),
           FirstFontChar: "",
           LastFontChar: "",
-          FontSpaces: ""
+          FontSpaces: "",
+          TagName: "MSXStandardPalette"
         },
         {
           Type: "Palettes",
@@ -110,7 +191,8 @@ export function activate(context: vscode.ExtensionContext) {
           Values: getDefaultMSXColors(true),
           FirstFontChar: "",
           LastFontChar: "",
-          FontSpaces: ""
+          FontSpaces: "",
+          TagName: "MSX2StandardPalette"
         }
       ];
       fs.writeFileSync(dataPath, JSON.stringify(defaultData), 'utf8');
@@ -152,8 +234,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataObject[] | null) {
   mainPanel = vscode.window.createWebviewPanel(
-    'msxSpriteGridEditor',     // Internal identifier
-    'MSX Objects editor',  // Visible title
+    'msxDevToolExtension',     // Internal identifier
+    'MSXDevTool',  // Visible title
     vscode.ViewColumn.One,     // Column to show the webview in
     {
       enableScripts: true,     // Allow scripts to run in the webview
@@ -182,27 +264,51 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
   const scriptUri = mainPanel.webview.asWebviewUri(
     vscode.Uri.joinPath(context.extensionUri, "media", "utils.js")
   );
-  htmlContent = htmlContent.replace(
-    /<script\s+src=["'].*utils\.js["']\s*>/,
-    `<script src="${scriptUri}">`
-  );
+  //htmlContent = htmlContent.replace(
+  //  /<script\s+src=["'].*utils\.js["']\s*>/,
+  //  `<script src="${scriptUri}">`
+  //);
 
   const scriptThiefUri = mainPanel.webview.asWebviewUri(
     vscode.Uri.joinPath(context.extensionUri, "media", "colorThief.js")
   );
-  console.log(scriptThiefUri);
-  htmlContent = htmlContent.replace(
-    /<script\s+src=["'].*colorThief\.js["']\s*>/,
-    `<script src="${scriptThiefUri}">`
+
+  const MSXimgLibUri = mainPanel.webview.asWebviewUri(
+    vscode.Uri.joinPath(context.extensionUri, "media", "MSXimgLib.js")
   );
+  
+  //htmlContent = htmlContent.replace(
+  //  /<script\s+src=["'].*colorThief\.js["']\s*>/,
+  //  `<script src="${scriptThiefUri}">`
+  //);
+
+  
+  const wasmPath = vscode.Uri.joinPath(context.extensionUri, 'media', 'MSXimgLib.wasm');
+  const wasmUri = mainPanel.webview.asWebviewUri(wasmPath).toString();
+
+
+
+
+function codeSync(language: string, id: string, data: string): void {
+  replaceTagInFiles(language, id, data);
+}
+
+  htmlContent = htmlContent.replace('utils_js_URI', scriptUri.toString());
+  //htmlContent = htmlContent.replace('initWasm_js_URI', wasmUri.toString());
+  htmlContent = htmlContent.replace('thiefColor_js_URI', scriptThiefUri.toString());
+  htmlContent = htmlContent.replace('MSXimgLib_js_URI', MSXimgLibUri.toString());
+  htmlContent = htmlContent.replace('WASM_URI_PLACEHOLDER', wasmUri);
 
   // Set the HTML content in the panel
   mainPanel.webview.html = htmlContent;
 
   // Send the loaded data to the webview
   mainPanel.webview.onDidReceiveMessage(message => {
-
+    console.log('Message received:', message);
     switch (message.command) {
+      case 'CodeSynch':
+        codeSync(message.language, message.id, message.data);
+        return;
       case 'saveDataStore':
         saveDataToFile(message.data);
         return;
@@ -414,7 +520,7 @@ function loadDataFromFile(){
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
     const workspacePath = workspaceFolders[0].uri.fsPath;
-    const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+    const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
     const dataPath = path.join(folderPath, 'Objects.json');
     data = fs.readFileSync(dataPath, 'utf8');
   }
@@ -495,7 +601,7 @@ function saveDataToFile(data: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
     const workspacePath = workspaceFolders[0].uri.fsPath;
-    const folderPath = path.join(workspacePath, 'MSXDeseignerExtension');
+    const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
     const dataPath = path.join(folderPath, 'Objects.json');
     console.log(`Saving data to: ${dataPath}`);
     try {
@@ -572,6 +678,7 @@ function disposeExtension() {
     targetedDetailsPanel = null;
   }
 }
+
 
 
 

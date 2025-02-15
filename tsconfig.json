@@ -6,10 +6,21 @@
     "lib": [
       "es2020"
     ],
+    "baseUrl": ".",
+    "paths": {
+      "native-loader": ["E:\\Dropbox\\FAUSTO\\SVILUPPI\\MSX\\MSXDevToolExtension\\addon/native-loader"]
+    },
     "sourceMap": true,
     "rootDir": "src",
-    "strict": true
+    "strict": true,
+    "esModuleInterop": true,
+    "declaration": true,   
+    "declarationMap": true           
   },
+  "include": [
+        "src",
+        "addon"
+  ],
   "exclude": [
     "node_modules",
     ".vscode-test"

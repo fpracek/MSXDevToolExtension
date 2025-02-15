@@ -26,6 +26,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+
+
   <title>MSX Dev Tool</title>
   <style>
     body {
@@ -504,14 +506,15 @@
 
    
     <select id="exportLanguageSelect" style="float: right;">
-      <option value="C (MSXgl)">C (MSXgl)</option>
-      <option value="C">C</option>
-      <option value="Assembly (binary)">Assembly (binary)</option>
-      <option value="Assembly (exadecimal)">Assembly (exadecimal)</option>
-      <option value="Assembly (MACRO80)">Assembly (MACRO80)</option>
-      <option value="MSX-C">MSX-C</option>
-      <option value="Pascal">Pascal</option>
-      <option value="MSX-BASIC">MSX-BASIC</option>
+      <option value="c">C</option>
+      <option value="asm-sdasz80">Assembly (SDDC)</option>
+      <option value="asm-tniasm">Assembly (tniASM)</option>
+      <option value="asm-asmsx">Assembly (asMSX)</option>
+      <option value="asm-sjasm">Assembly (Syasm)</option>
+      <option value="asm-macro80">Assembly (MACRO80)</option>
+      <option value="msxc">MSX-C</option>
+      <!-- <option value="Pascal">Pascal</option> -->
+      <option value="bas">MSX-BASIC</option>
     </select>
     <label style="float: right; margin-left: 10px;padding-top: 5px;">Export language:</label>
     <button id="codeGeneratorButton" style="float: right; margin-left: 10px;">MSXgl code generator...</button>
@@ -608,8 +611,24 @@
                 </div>
                 <div class="form-group-container">
                   <div class="form-group">
-                    <label for="minColorsDistance">Color min. distancy (only for new palettes):</label>
-                    <input type="number" id="minColorsDistance" value="1" min="1" max="255" />
+                    <label style="display: none;" for="minColorsDistance">Color min. distancy (only for new palettes):</label>
+                    <input type="number" id="minColorsDistance" value="1" min="1" max="255" style="display: none;" />
+                  </div>
+                </div>
+                <!-- Aggiungi la combobox per il dithering -->
+                <div class="form-group-container">
+                  <div class="form-group">
+                    <label for="dithering">Dithering:</label>
+                    <select id="dithering" name="dithering">
+                      <option value="none">No dithering</option>
+                      <option value="floyd">Floyd & Steinberg error diffusion algorithm</option>
+                      <option value="bayer4">Bayer ordered dispersed dot dithering (order 2 – 4x4 - dithering matrix)</option>
+                      <option value="bayer8">Bayer ordered dispersed dot dithering (order 3 – 8x8 - dithering matrix)</option>
+                      <option value="bayer16">Bayer ordered dispersed dot dithering (order 4 - 16x16 dithering matrix)</option>
+                      <option value="cluster6">Ordered clustered dot dithering (order 3 - 6x6 matrix)</option>
+                      <option value="cluster8">Ordered clustered dot dithering (order 4 - 8x8 matrix)</option>
+                      <option value="cluster16">Ordered clustered dot dithering (order 8 - 16x16 matrix)</option>
+                    </select>
                   </div>
                 </div>
                 <div class="form-group-container">
@@ -619,18 +638,12 @@
                   </div>
                 </div>
               </div>
-              <div class="selected-image" style="height: 340px;" id="selectedImagePanel">
+              <div class="selected-image" style="height: 330px;" id="selectedImagePanel">
                 <img id="selectedImage" src="" />
               </div>
             </div>
             <div id="transparentColorsTab" class="tab-content">
               <table class="transparent-colors">
-                <tr>
-                  <td><input type="text" maxlength="7" /></td>
-                  <td><input type="text" maxlength="7" /></td>
-                  <td><input type="text" maxlength="7" /></td>
-                  <td><input type="text" maxlength="7" /></td>
-                </tr>
                 <tr>
                   <td><input type="text" maxlength="7" /></td>
                   <td><input type="text" maxlength="7" /></td>
@@ -812,7 +825,7 @@
     <div class="dialog image-dialog">
       <div class="header" id="imageDialogHeader"></div>
       <div class="image-container" style="width: 750px; height: 600px;">
-        <img id="combinedImage"  src="" />
+        <img id="combinedImage"  src="" style="image-rendering: pixelated;"/>
       </div>
       <div class="form-actions">
         <button id="imageDialogCopy">Copy</button>
@@ -821,11 +834,31 @@
     </div>
   </div>
 
-<script src="./utils.js"></script>
-<script src="./colorThief.js"></script>
+  <script>
 
-<script>
+    const wasmUri = 'WASM_URI_PLACEHOLDER';
+    let freeImageModuleIsReady=false;
+  </script>
+<script  src="utils_js_URI"></script>
+<script  src="thiefColor_js_URI"></script>
+<script  src="MSXimgLib_js_URI"></script>
+<!-- Includi la libreria utils.js come script classico con il nonce -->
+  
+  
+<script >
 
+
+//let freeImageModule = null;
+//
+//createModule().then((Module) => {
+//    freeImageModule = Module;
+//    console.log('WebAssembly module initialized.');
+//
+//    // Opzionale: Invia un evento per segnalare che il modulo è pronto
+//    document.dispatchEvent(new Event('FreeImageModuleReady'));
+//}).catch((err) => {
+//    console.error('Error initializing WebAssembly module:', err);
+//});
 /* ======================================================================================
    GLOBAL STATE
    ====================================================================================== */ 
@@ -845,6 +878,8 @@ let noCroppedImportImages = [];
 let codeGeneratorItems = [];
 let codGeneratorMachine="";
 let codeGeneratorScreenMode="";
+let noCroppedImageColorCounter=0;
+let croppedImageColorCounter=0;
 
 /* ======================================================================================
    MOCK DATA
@@ -852,18 +887,18 @@ let codeGeneratorScreenMode="";
 
 function loadDataStore(data) {
   dataStore = JSON.parse(data);
-  updateGrid();
+ 
 
   // Set the export language combo box value
   const exportLanguageSelect = document.getElementById("exportLanguageSelect");
   const settingExportType = dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE");
-  console.log("SETTING_EXPORT_TYPE", settingExportType);
   if (settingExportType) {
     exportLanguageSelect.value = settingExportType.Values;
   } else {
-    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "C (MSXgl)" });
-    exportLanguageSelect.value = "C (MSXgl)";
+    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "c" });
+    exportLanguageSelect.value = "c";
   }
+  updateGrid();
 }
 
 /* ======================================================================================""
@@ -970,7 +1005,8 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "Description", field: "Description" },
         { label: "Size (W/H)", field: "Size" },
         { label: "Palette", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }, // New column
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
     case "Tiles":
@@ -979,7 +1015,8 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "Description", field: "Description" },
         { label: "Size (W/H)", field: "Size" },
         { label: "Palette", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }, // New column
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
     case "Maps":
@@ -988,7 +1025,8 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "Description", field: "Description" },
         { label: "Size (W/H)", field: "Size" },
         { label: "Tile", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }, // New column
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
     case "Fonts":
@@ -1000,7 +1038,8 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "First char", field: "FirstFontChar" },
         { label: "Last char", field: "LastFontChar" },
         { label: "Palette", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }, // New column
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
     case "Animations":
@@ -1008,14 +1047,15 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "ID", field: "ID" },
         { label: "Description", field: "Description" },
         { label: "Sprite/Tile", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }
       ];
       break;
     case "Palettes":
       columns = [
         { label: "ID", field: "ID" },
         { label: "Description", field: "Description" },
-        { label: "Colors", field: "Values" }
+        { label: "Colors", field: "Values" },
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
     case "Images":
@@ -1024,7 +1064,8 @@ function renderGrid(typeFilter, subtypeFilter) {
         { label: "Description", field: "Description" },
         { label: "Size (W/H)", field: "Size" },
         { label: "Palette", field: "ChildObjectID" },
-        { label: "Items", field: "ValuesCount" } // New column
+        { label: "Items", field: "ValuesCount" }, // New column
+        { label: "Code tag ID", field: "TagName" } // New column
       ];
       break;
   }
@@ -1096,7 +1137,6 @@ function renderGrid(typeFilter, subtypeFilter) {
             td.appendChild(colorDiv);
           });
         } catch(e) {
-          console.log ("ERROR", e);
           td.textContent = "Invalid JSON Colors";
         }
       }
@@ -1121,6 +1161,7 @@ function renderGrid(typeFilter, subtypeFilter) {
     });
 
     // Actions column
+    const expLanguageSelect = document.getElementById("exportLanguageSelect");
     let tdActions = document.createElement("td");
     if (!editModeActive) {
       // Edit button
@@ -1128,7 +1169,6 @@ function renderGrid(typeFilter, subtypeFilter) {
       editBtn.className = "action-button";
       editBtn.textContent = "Edit";
       editBtn.addEventListener("click", () => {
-        console.log("Clicked Edit on record:", row);
         openEditDialog(row, false);
       });
       tdActions.appendChild(editBtn);
@@ -1147,7 +1187,6 @@ function renderGrid(typeFilter, subtypeFilter) {
         removeBtn.style.display = "none";
       }
       removeBtn.addEventListener("click", () => {
-        console.log("Clicked Remove on record:", row);
         if(row.Type === "Sprites" || row.Type === "Tiles"){
           let dependants = getDependants(row.Type, row.ID);
           if(dependants.length > 0){
@@ -1197,8 +1236,9 @@ function renderGrid(typeFilter, subtypeFilter) {
         btnGetImage.textContent = "Get image...";
         btnGetImage.className = "action-button getimage-button";
         btnGetImage.addEventListener("click", () => {
-        const paletteRecord = dataStore.find(r => r.Type === "Palettes" && r.ID === row.ChildObjectID);
-        createCombinedImage(row, paletteRecord);
+          
+        const paletteRecord = dataStore.find(r => r.Type === "Palettes" && r.ID.toString() === row.ChildObjectID.toString());
+        createCombinedImage(row, paletteRecord,true);
         document.getElementById("imageDialogHeader").textContent = `${typeFilter} set "${row.Description}"`;
         document.getElementById("imageDialogHeader").style.fontWeight = "bold";
         document.getElementById("imageDialogHeader").style.fontSize = "20px";
@@ -1206,6 +1246,19 @@ function renderGrid(typeFilter, subtypeFilter) {
         });
         tdActions.appendChild(btnGetImage);
       }
+      // Code sync button
+
+
+      if (row.Type !== "Animations" ){
+        if(expLanguageSelect.value==="c" || expLanguageSelect.value.toString().substring(0,3)==="asm"){
+          let codeUpdateBtn = document.createElement("button");
+          codeUpdateBtn.className = "action-button codesync-button";
+          codeUpdateBtn.textContent = "Code synch";
+          codeUpdateBtn.dataset.recordId = row.ID;
+          tdActions.appendChild(codeUpdateBtn);
+        }
+      }
+      
     }
     tr.appendChild(tdActions);
 
@@ -1217,7 +1270,6 @@ function renderGrid(typeFilter, subtypeFilter) {
    OPEN EDIT DIALOG
    ====================================================================================== */
 function openEditDialog(existingRow, createNew) {
-  console.log("openEditDialog, createNew=", createNew);
   const dialog = document.getElementById("editDialog");
   dialog.innerHTML = "";
   dialog.classList.remove("hidden");
@@ -1252,7 +1304,8 @@ function openEditDialog(existingRow, createNew) {
     tempRow.FirstFontChar = "";
     tempRow.LastFontChar = "";
     tempRow.FontSpaces = "";
-    tempRow.msxglSpriteSize = "8x8"; // Default value for new records
+    tempRow.msxglSpriteSize = "bmp"; // Default value for new records
+    tempRow.TagName = ""; // Initialize TagName
 
     // if Palettes => default colors
     if (currentType === "Palettes") {
@@ -1387,10 +1440,10 @@ function openEditDialog(existingRow, createNew) {
     let divWrap = document.createElement("div");
     divWrap.className = "form-group";
     let fieldLabel = document.createElement("label");
-    fieldLabel.textContent = "MSXgl export mode:";
+    fieldLabel.textContent = "Export mode:";
     let fieldInput = document.createElement("select");
-    fieldInput.innerHTML = '<option value="8x8">8x8</option><option value="16x16">16x16</option>';
-    fieldInput.value = tempRow.msxglSpriteSize || "8x8";
+    fieldInput.innerHTML = '<option value="bmp">Bitmap</option><option value="gm1">Graphic mode 1 (Screen 1)</option><option value="gm2">Graphic mode 2 (Screen 2 or 4)</option><option value="sprt">16x16 sprites with specific block ordering</option>';
+    fieldInput.value = tempRow.msxglSpriteSize || "bmp";
     fieldInput.addEventListener("change", e => {
       tempRow.msxglSpriteSize = e.target.value;
     });
@@ -1399,6 +1452,24 @@ function openEditDialog(existingRow, createNew) {
     dialog.appendChild(divWrap);
   }
 
+  if (currentType !== "Animations" && !createNew) {
+    // Add TagName field
+    let divWrapTagName = document.createElement("div");
+    divWrapTagName.className = "form-group";
+    let fieldLabelTagName = document.createElement("label");
+    fieldLabelTagName.textContent = "Code tag ID:";
+    let fieldInputTagName = document.createElement("input");
+    fieldInputTagName.type = "text";
+    fieldInputTagName.maxLength = 30;
+    fieldInputTagName.value = tempRow.TagName || "";
+    fieldInputTagName.addEventListener("input", e => {
+      e.target.value = e.target.value.replace(/[^a-zA-Z0-9_]/g, '');
+      tempRow.TagName = e.target.value;
+    });
+    divWrapTagName.appendChild(fieldLabelTagName);
+    divWrapTagName.appendChild(fieldInputTagName);
+    dialog.appendChild(divWrapTagName);
+  }
   // Save/Cancel buttons
   let divActions = document.createElement("div");
   divActions.className = "form-group";
@@ -1415,9 +1486,30 @@ function openEditDialog(existingRow, createNew) {
 
     // Minimum validation
     if (!tempRow.Description) {
-      openInfoDialog("Description is required!", null);
+      openInfoDialog("Description is required.", null);
       return;
     }
+
+    // Validate TagName
+    if (tempRow.Type!=="Animations") {
+      if(!tempRow.TagName || tempRow.TagName.trim()===""){
+        openInfoDialog("Code tag ID is required.", null);
+        return;
+      }
+      if (!checkTagName(dataStore, tempRow)) {
+        openInfoDialog("Code tag ID must be unique.", null);
+        return;
+      }
+      const num = Number(tempRow.TagName.toString().substring(0,1));
+      if(!isNaN(num)){
+        openInfoDialog("Code tag ID must not start with a number.", null);
+        return;
+      }
+    }
+    else{
+      tempRow.TagName="_";
+    }
+    
 
     // Example of size validations
     if (!checkSizeConstraints(currentType, currentSubtype, tempRow)) {
@@ -1436,12 +1528,12 @@ function openEditDialog(existingRow, createNew) {
         } else if (suffix === "T") {
           tempRow.ChildObjectType = "Tiles";
         } else {
-          openInfoDialog("Invalid suffix in Sprite/Tile combo!", null);
+          openInfoDialog("Invalid suffix in Sprite/Tile combo.", null);
           return;
         }
         tempRow.ChildObjectID = childID;
       } else {
-        openInfoDialog("Please select a valid Sprite/Tile in combo!", null);
+        openInfoDialog("Please select a valid Sprite/Tile in combo.", null);
         return;
       }
     }
@@ -1465,14 +1557,14 @@ function openEditDialog(existingRow, createNew) {
     }
 
     // Validate msxglSpriteSize if set to "16x16"
-    if (currentType === "Sprites" && currentSubtype === "Type 1" && tempRow.msxglSpriteSize === "16x16") {
+    if (currentType === "Sprites" && currentSubtype === "Type 1" && tempRow.msxglSpriteSize === "sprt") {
       let [w, h] = tempRow.Size.split("x").map(Number);
       if (w % 16 !== 0 || h % 16 !== 0) {
-        openInfoDialog("16x16 MSXgl export mode is not compatible with sprite set size", null);
+        openInfoDialog("16x16 export mode is not compatible with sprite set size", null);
         return;
       }
     }
-
+   
     // Save
     if (createNew) {
       if (createNew && currentType !== "Palettes" && currentType !== "Animations") {
@@ -1519,7 +1611,6 @@ function openEditDialog(existingRow, createNew) {
   let cancelBtn = document.createElement("button");
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => {
-    console.log("Clicked CANCEL");
     dialog.classList.add("hidden");
     document.getElementById("typeSelect").disabled = false;
     document.getElementById("subtypeSelect").disabled = false;
@@ -1547,7 +1638,7 @@ function checkSizeConstraints(type, subtype, row) {
   if (type === "Sprites" || subtype=== "Type 2") {
     // Sprites validation (already present)
     if (wNum < 8 || wNum > 16 || hNum < 8 || hNum > 16) {
-      openInfoDialog("Size must be in [8.16]!", null);
+      openInfoDialog("Size must be in [8.16].", null);
       return false;
     }
     if ((wNum !== hNum) ) {
@@ -1559,7 +1650,7 @@ function checkSizeConstraints(type, subtype, row) {
   if (type === "Sprites" || type=== "Tiles") {
     // Sprites validation (already present)
     if (wNum < 8 || wNum > 32 || hNum < 8 || hNum > 32) {
-      openInfoDialog("Size must be in [8.32]!", null);
+      openInfoDialog("Size must be in [8.32].", null);
       return false;
     }
     if (wNum % 8 !== 0 || hNum % 8 !== 0) {
@@ -1610,7 +1701,9 @@ function getFieldsForType(type, row, createNew) {
     { label: "ID: ", name: "ID", type: "text", disabled: true },
     { label: "Description: ", name: "Description", type: "text", maxLength: 255 }
   ];
-
+  if (type !== "Animations") {
+    fields.push({ label: "Code tag ID: ", name: "TagName", type: "text", maxLength: 30 });
+  }
   if (type === "Sprites") {
     let sizeOptions = { min: 8, max: 64, step: 8, disabled: !createNew };
     if (row.Subtype === "Type 2") {
@@ -1958,7 +2051,6 @@ function focusOnColorSquare() {
    CONFIRM DIALOG
    ====================================================================================== */
 function openConfirmDialog(onConfirm) {
-  console.log("openConfirmDialog");
   const overlay = document.getElementById("confirmOverlay");
   const okBtn = document.getElementById("confirmOk");
   const cancelBtn = document.getElementById("confirmCancel");
@@ -1985,7 +2077,6 @@ function openConfirmDialog(onConfirm) {
    INFO DIALOG
    ====================================================================================== */
 function openInfoDialog(message, onClose) {
-  console.log("openInfoDialog", message);
   const overlay = document.getElementById("infoOverlay");
   const msg = document.getElementById("infoMessage");
   const okBtn = document.getElementById("infoOk");
@@ -2028,7 +2119,6 @@ function computeBrightness(hex) {
    EVENT LISTENERS (on load)
    ====================================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM loaded");
   document.getElementById("typeSelect").value = "Sprites";
   updateSubtypeCombo();
   updateGrid();
@@ -2042,7 +2132,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("addButton").addEventListener("click", () => {
-    console.log("Clicked ADD new record");
     openEditDialog(null, true);
   });
 
@@ -2055,7 +2144,6 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
       case 'returnFromDetails':
         const data = JSON.parse(message.data);
-        console.log("returnFromDetails", data);
         // Update the data store with the reloaded data
         dataStore = data;
         // Apply filters based on the record's type and subtype
@@ -2085,9 +2173,12 @@ document.addEventListener("DOMContentLoaded", () => {
       openDetailsView(record);
     }
   });
-
+  document.getElementById("exportLanguageSelect").addEventListener("change", () => {
+    updateGrid();
+  });
   document.getElementById("dataGrid").addEventListener("click", (e) => {
     if (e.target.classList.contains("imports-button")) {
+      
       const recordId = e.target.dataset.recordId;
       const currentType = document.getElementById("typeSelect").value;
       let currentSubtype = "";
@@ -2099,19 +2190,183 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("dataGrid").addEventListener("click", (e) => {
+  document.getElementById("dataGrid").addEventListener("click", async (e) => {
+    const currentType = document.getElementById("typeSelect").value;
+    let currentSubtype = "";
+      if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
+        currentSubtype = document.getElementById("subtypeSelect").value;
+      }
+    const recordId = e.target.dataset.recordId;
+ 
+    const tagName=dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10)).TagName;
+    const expLanguageSelect = document.getElementById("exportLanguageSelect");
+    if (e.target.classList.contains("codesync-button")) {
+      const codeData=await exportRecord(recordId, expLanguageSelect, false);
+     
+      vscode.postMessage({
+        command: "CodeSynch",
+        language: expLanguageSelect.value==="c"?"c":"asm",
+        data: codeData,
+        id: tagName
+      });
+    }
+    
     if (e.target.classList.contains("export-button")) {
-      const recordId = e.target.dataset.recordId;
-      const currentType = document.getElementById("typeSelect").value;
+      
+      
+      await exportRecord(recordId, expLanguageSelect, true);
+      
+    }
+});
+async function exportRecord(recordId, expLanguageSelect, displayData) {
+  const currentType = document.getElementById("typeSelect").value;
       let currentSubtype = "";
       if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
         currentSubtype = document.getElementById("subtypeSelect").value;
       }
-      const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
-      exportRecord(record);
-    }
-  });
- 
+      const record = dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10));
+
+      if(record.Type==="Palettes"){
+        let colorId=0;
+        let cArray = "";  
+        let basicLine=10000;
+        if(expLanguageSelect.value==="c"){
+          cArray += `const unsigned char ${record.TagName}[] = {\n`;
+        }
+        else{
+          if(expLanguageSelect.value==="msxc"){
+            cArray += `TINY colors[] = {\n`;
+          }
+          else{
+            if(expLanguageSelect.value!=="bas"){
+              cArray += `${record.TagName}:\n`;
+            }
+          }
+        }
+        
+        record.Values.forEach(p=>{
+          let col=htmlToMSXColor(p.color);
+          switch(expLanguageSelect.value) {
+            case "c":
+              cArray += `\t0x${col[0].toString().toUpperCase()}, 0x${col[1].toString().toUpperCase()}, // Color[${colorId}] ${record.Values[colorId].color} \n`;
+              break;
+            case "msxc":
+              cArray += `\t0x${col[0].split(",").toString().toUpperCase()}, 0x${col[1].toString().toUpperCase()}, /* Color[${colorId}] ${record.Values[colorId].color} */\n`;
+              break;
+            case "bas":
+              basicLine+=10;
+              cArray += `${basicLine} DATA &H${col[0].toString().replace("0x","&H")},&H${col[1].toString().replace("0x","&H")} : ' Color[${colorId}] ${record.Values[colorId].color}\n`;
+              break;
+            case "asm-sdasz80":
+              cArray += `\t.db 0x${col[0].toString().toUpperCase()}, 0x${col[1].toString().toUpperCase()}, ; Color[${colorId}] ${record.Values[colorId].color}\n`;
+              break;
+            case "asm-tniasm":
+            case "asm-asmsx":
+              cArray += `\tdb $${col[0].toString().toUpperCase().replace("0x","$")}, $${col[1].toString().toUpperCase().replace("0x","$")}, ; Color[${colorId}] ${record.Values[colorId].color}\n`;
+              break;
+            case "asm-sjasm":       
+              cArray += `\tdb 0x${col[0].toString().toUpperCase()}, 0x${col[1].toString().toUpperCase()}, ; Color[${colorId}] ${record.Values[colorId].color} ; Color[${colorId}] ${record.Values[colorId].color}\n`;
+              break;
+            case "asm-macro80":       
+              cArray += `\tdb ${col[0].toString().toUpperCase().replace("0x","")+"h"}, ${col[1].toString().toUpperCase().replace("0x","")+"h"}, ; Color[${colorId}] ${record.Values[colorId].color}\n`;
+              break;
+          }
+          colorId++;
+
+
+        });
+        if(expLanguageSelect.value==="c" || expLanguageSelect.value==="msxc"){
+          cArray += `};\n`;
+        }
+       
+        if(displayData){
+          openExportDialogPanel(cArray,record);
+        }
+        return cArray;
+      }
+
+      const paletteRecord = dataStore.find(r => r.Type === "Palettes" && r.ID.toString() === record.ChildObjectID.toString());
+
+      if(record.Type==="Maps"){
+        const mapData=exportMaps(record,expLanguageSelect.value);
+        if(displayData){
+          openExportDialogPanel(mapData,record);
+        }
+        return mapData;
+      }
+      try {
+        const canvas = await createCombinedImage(record, paletteRecord, false);
+        const image=canvas.toDataURL();
+       
+        const exportBase64String = image.split("base64,")[1];
+       
+        
+        let language=expLanguageSelect.value.split("-")[0].toLowerCase();
+        let asmType="";
+        if(language==="asm"){
+          asmType=expLanguageSelect.value.split("-")[1].toLowerCase();
+        }
+      
+        let palettes=[];
+        paletteRecord.Values.forEach(p=>{
+          palettes.push(parseInt(p.color.substring(1),16));
+        });
+        
+
+        const [itemWidth, itemHeight] = record.Size.split("x").map(Number);
+        const blocksX=canvas.width/itemWidth;
+        const blocksY=canvas.height/itemHeight;
+        let fontExport=false;
+        let fontHeaderFirst=0;
+        let fontHeaderLast=0;
+        let fontHeaderX=0;
+        let fontHeaderY=0;
+        let exportType="bmp";
+        if (record.Type=="Sprites"){
+          exportType=record.msxglSpriteSize;
+        }
+        if (record.Type=="Fonts"){
+          fontExport=true;
+          fontHeaderFirst=0;
+          fontHeaderLast=0;
+          fontHeaderX=0;
+          fontHeaderY=0;
+        }
+        exportType="e"+exportType;
+        //console.log("WIDTH",itemWidth);
+        //console.log("HEIGHT",itemHeight);
+//
+        //console.log("BLOCKSX",blocksX);
+        //console.log("BLOCKSY",blocksY);
+        //console.log("LANGUAGE",language); 
+        //console.log("EXPORTTYPE",exportType);
+        //console.log("PALETTES",palettes);
+       
+        if(record.Subtype!="Type 2"){
+          const freeImageData=getPngDataArray(exportBase64String,record.TagName,itemWidth,itemHeight,blocksX,blocksY,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);
+          //console.log("EXPORTIMAGE", freeImageData);
+          if(displayData){
+            openExportDialogPanel(freeImageData[2],record);
+          }
+          return freeImageData[2];
+        }
+        else{
+          const arrayc=exportType2Sprites(record,expLanguageSelect.value)
+          if(displayData){
+            openExportDialogPanel(arrayc,record);
+          }
+          return arrayc;
+        }
+
+        
+                                  
+        
+
+    
+      } catch (error) {
+        console.error("Error exporting data:", error);
+      }
+}
   document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && (e.key === "+" || e.key === "-" || e.key === "=")) {
       e.preventDefault();
@@ -2201,6 +2456,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("codeGeneratorButton").addEventListener("click", () => {
     document.getElementById("codeGeneratorModal").style.display = "flex";
     populatePaletteOptions();
+
     updateScreenModes();
   });
 
@@ -2242,29 +2498,22 @@ document.addEventListener("DOMContentLoaded", () => {
     updateFilteredGrid();
   }
 
-  function populatePaletteOptions() {
-    const paletteSelect = document.getElementById("paletteSelect");
-    paletteSelect.innerHTML = ""; // Clear existing options
-    const palettes = dataStore.filter(r => r.Type === "Palettes");
-    palettes.forEach(palette => {
-      const option = document.createElement("option");
-      option.value = palette.ID;
-      option.textContent = palette.Description;
-      paletteSelect.appendChild(option);
-    });
-
-    const codePaletteSelect = document.getElementById("codePaletteSelect"); // Added this line
-    codePaletteSelect.innerHTML = ""; // Clear existing options
-    palettes.forEach(palette => {
-      const option = document.createElement("option");
-      option.value = palette.ID;
-      option.textContent = palette.Description;
-      codePaletteSelect.appendChild(option);
-    });
-  }
-
   
 
+  const paletteSelect = document.getElementById("paletteSelect");
+  const ditheringSelect = document.getElementById("dithering");
+
+  paletteSelect.addEventListener("change", () => {
+    if (paletteSelect.value !== "areaonlycolors" && paletteSelect.value !== "allimagecolors") {
+      ditheringSelect.value = "none";
+      ditheringSelect.disabled = true;
+    } else {
+      ditheringSelect.disabled = false;
+    }
+  });
+
+  // Trigger change event on page load to set initial state
+  paletteSelect.dispatchEvent(new Event("change"));
 
 });
 
@@ -2288,8 +2537,6 @@ function openDetailsView(record) {
   let spriteTilePaletteRecord=[];
   if(record.Type==="Animations" || record.Type==="Maps"){
     spriteTilePaletteRecord=dataStore.find(r => r.Type === childRecord.ChildObjectType && r.ID.toString() === childRecord.ChildObjectID.toString());
-    console.log("spriteTilePaletteRecord",spriteTilePaletteRecord);
-    console.log("childRecord",childRecord);
     if(childRecord.Values===null || childRecord.Values===undefined || childRecord.Values.length===0){
       openInfoDialog("No items in \"" + childRecord.Description + "\" " + childRecord.Type.toLowerCase() + " sets", null);
       return;
@@ -2312,31 +2559,143 @@ function closeDetailsView() {
 
 
 // ==========
-// ColorThief
+// Free Image
 // ==========
+function parseData(input) {
+  // Suddividi in righe rimuovendo eventuali spazi iniziali/finali
+  const lines = input.trim().split("\n").map(line => line.trim());
 
-function getDominantColorsFromDataUrl(base64Image, distancy,croppedImage,transparentColors,size){
+  const items = [];
+  let currentItem = null;
+  let palette = [];
+
+  // Flag per capire se siamo arrivati alla sezione PALETTE
+  let inPalette = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Se la riga è vuota, ignora e continua
+    if (!line) continue;
+
+    // Controlla se è la riga "ITEM"
+    if (line.toUpperCase() === "ITEM") {
+      // Se c'era un item in costruzione, lo aggiungiamo all'array items
+      if (currentItem) {
+        items.push(currentItem);
+      }
+      // Creiamo un nuovo item
+      currentItem = [];
+      inPalette = false;
+      continue;
+    }
+
+    // Controlla se è la riga "PALETTE"
+    if (line.toUpperCase() === "PALETTE") {
+      // Chiudi l'ultimo item, se ce n'era uno in corso
+      if (currentItem) {
+        items.push(currentItem);
+        currentItem = null;
+      }
+      // Da qui in poi siamo nella sezione PALETTE
+      inPalette = true;
+      continue;
+    }
+
+    // Se siamo dentro la sezione PALETTE,
+    // presumibilmente la palette è su un'unica riga
+    if (inPalette) {
+      // Rimuovi eventuali ";" finali in eccesso, poi splitta
+      const values = line
+        .replace(/;$/, "") // rimuove un ";" finale se presente
+        .split(";")
+        .map(v => v.trim())
+        .filter(v => v)           // rimuove eventuali stringhe vuote
+        .map(v => v.replace(/^0x/i, "")); // rimuove il prefisso "0x" (case insensitive)
+
+      palette = palette.concat(values);
+      // Se la palette è davvero su una sola riga, possiamo interrompere qui
+      break; 
+    } else {
+      // Siamo dentro un ITEM, quindi parsiamo la riga come elenco di valori
+      const rowValues = line
+        .replace(/;$/, "") // rimuove ";" finale se presente
+        .split(";")
+        .map(v => v.trim())
+        .filter(v => v)           // rimuove eventuali stringhe vuote (se ci fosse un separatore in più)
+        .map(v => v.replace(/^0x/i, "")); // rimuove "0x" davanti a ogni valore
+
+      currentItem.push(rowValues);
+    }
+  }
+
+  // Se alla fine abbiamo ancora un item in costruzione, lo aggiungiamo
+  if (currentItem) {
+    items.push(currentItem);
+  }
+
+  return { items, palette };
+}
+
+
+
+// ------------------
+// Esempio di utilizzo
+// ------------------
+const palette = [
+  "0xFF","0x03", // R=F (15 dec) => 15*17=255, B=F =>255, G=3 =>3*17=51 => color #FF33FF (o #FF33FF? attenti a R=F, B=F => #?)
+  "0x00","0x0A", // ...
+  "0xA2","0x7F",
+  // e così via...
+];
+
+
+function getDominantColorsFromDataUrl(base64Image, distancy,croppedImage,transparentColors,itemSize,croppedImageSize,wholeImageSize,paletteOffset,ditherMethod,colorsCount) {
     
-    const colorThief = new ColorThief();
+    
+  paletteOffset=0;
+    //const colorThief = new ColorThief();
     const img = new Image();
    
     img.onload = () => {
+      const [imageWidth, imageHeight] = wholeImageSize;
+        //var palette = colorThief.getPalette(img, thiefMaxColors, 0); 
+      const dataUrl = img.src;                              // "data:image/png;base64,iVBORw0K..."
+      const base64String = dataUrl.split("base64,")[1]; 
+      console.log("COUNT",colorsCount);
+      const imageData=getPngDataArray(base64String,"table",imageWidth,imageHeight,1,1,"custom",0,0,0,0,4,"import",true,0,false,0,null,colorsCount,paletteOffset,false,false,"bmp",ditherMethod,"hexa0x","","none",null,0,0,0,0,false,false,true);
+      if(imageData[0].toString()=="-1"){
+          openValidationDialog(imageData[1]);
+          return;
+      }
      
-        var palette = colorThief.getPalette(img, thiefMaxColors, 0); 
+      var palette=parseData(imageData[2]);
+      //console.log("PALETTE1",palette.palette);
+      const hexPalette =[];
+      if(colorsCount==15){
+            // oppure [...arr];
+        hexPalette.push("#000000");
         
-        palette = filterSimilarColors(palette, distancy);
-        const hexPalette = palette.map(color => {
-            return ('#' + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1)).toUpperCase();
-        });
+        
+      }
+      for (let i = 0; i < palette.palette.length; i++) {
+          hexPalette.push(palette.palette[i]);
+      }
+      //console.log("PALETTE2",hexPalette);
       
-        importItemsFromImage(hexPalette,croppedImage,transparentColors,size);
+      //return;
+      //palette = filterSimilarColors(palette, distancy);
+      //const hexPalette = palette.map(color => {
+      //    return ('#' + ((1 << 24) + (color[0] << 16) + (color[1] << 8) + color[2]).toString(16).slice(1)).toUpperCase();
+      //});
+   
+      importItemsFromImage(hexPalette,croppedImage,transparentColors,itemSize,croppedImageSize);
     };
 
 
-    console.log("QUI3");
+ 
     var quality = 10;
     img.src = base64Image; 
-    console.log(base64Image);
 };
 
 function colorDistance(color1, color2) {
@@ -2380,25 +2739,34 @@ function highlightRow(row) {
   row.style.border = "3px solid red";
 }
 
-function importItemsFromImage(hexPalette, croppedImage, transparentColors, size) {
-  console.log("PALETTES",hexPalette);
+function importItemsFromImage(hexPalette, croppedImage, transparentColors, size,croppedImageSize) {
   importPaletteID = -1; // Reset importPaletteID
   //importHexPalette = hexPalette; // Save the palette to the global variable
   const [itemWidth, itemHeight] = size;
+  const [imageWidth, imageHeight] = croppedImageSize;
   const objectColumns = parseInt(document.getElementById("objectColumns").value, 10);
   const objectRows = parseInt(document.getElementById("objectRows").value, 10);
   const gapX = parseInt(document.getElementById("gapX").value, 10);
   const gapY = parseInt(document.getElementById("gapY").value, 10);
   const posX = parseInt(document.getElementById("posX").value, 10);
   const posY = parseInt(document.getElementById("posY").value, 10);
+ 
+  const dataUrl = croppedImage;                              // "data:image/png;base64,iVBORw0K..."
+  const base64String = dataUrl.split("base64,")[1]; 
 
-  
+  let palettes=[];
+  for(let i=0;i<16;i++){
+    palettes.push(parseInt(hexPalette[i].substring(1),16));
+  }
+
+  const freeImageData=getPngDataArray(base64String,"table",imageWidth,imageHeight,1,1,"input",0,0,0,0,4,"import",false,0,false,0,palettes,16,0,false,false,"bmp","none","hexa0x","","none",null,0,0,0,0,false,false,true);
+
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   const img = new Image();
   
   img.onload = () => {
-    console.log("CROPPED IMAGE",croppedImage);
     canvas.width = img.width;
     canvas.height = img.height;
     ctx.drawImage(img, 0, 0);
@@ -2435,6 +2803,7 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
     // Check if a palette from records is selected
     const selectedPaletteID = document.getElementById("paletteSelect").value;
     if (selectedPaletteID !== "areaonlycolors" && selectedPaletteID !== "allimagecolors") {
+   
       const selectedPalette = dataStore.find(p => p.Type === "Palettes" && p.ID.toString() === selectedPaletteID);
       if (selectedPalette) {
         hexPalette = selectedPalette.Values.map(c => c.color.toUpperCase());
@@ -2535,15 +2904,12 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
       for (let col = 0; col < objectColumns; col++) {
         const x = col * (itemWidth + gapX);
         const y = row * (itemHeight + gapY);
-        console.log("X_Y",x,y);
         const itemCanvas = document.createElement("canvas");
         itemCanvas.width = itemWidth;
         itemCanvas.height = itemHeight;
         const itemCtx = itemCanvas.getContext("2d");
         itemCtx.drawImage(canvas, x, y, itemWidth, itemHeight, 0, 0, itemWidth, itemHeight);
         const itemBase64 = itemCanvas.toDataURL();
-        console.log("CANVAS",canvas);
-        console.log("itemBase64",itemBase64);
         // Ensure images for "Tiles" with subtype "Standard" or "Fonts" do not have more than two colors
         if (document.getElementById("typeSelect").value === "Fonts" || (document.getElementById("typeSelect").value === "Tiles" && document.getElementById("subtypeSelect").value === "Standard")) { 
           const uniqueColors = new Set();
@@ -2730,7 +3096,7 @@ function importItemsFromImage(hexPalette, croppedImage, transparentColors, size)
     }
   };
   
-  img.src = croppedImage;
+  img.src = parseImageData(freeImageData[2]);
 }
 
 function removePreviewRow(row, id) {
@@ -2785,19 +3151,19 @@ function colorDistance(color1, color2) {
 function getRequiredFieldsForType(type) {
   switch (type) {
     case "Sprites":
-      return ["Description", "Size", "ChildObjectID"];
+      return ["Description", "Size", "ChildObjectID", "TagName"]; // Added TagName
     case "Tiles":
-      return ["Description", "Size", "ChildObjectID"];
+      return ["Description", "Size", "ChildObjectID", "TagName"]; // Added TagName
     case "Maps":
-      return ["Description", "Size", "ChildObjectID"];
+      return ["Description", "Size", "ChildObjectID", "TagName"]; // Added TagName
     case "Fonts":
-      return ["Description", "Size", "FontSpaces", "FirstFontChar", "LastFontChar", "ChildObjectID"];
+      return ["Description", "Size", "FontSpaces", "FirstFontChar", "LastFontChar", "ChildObjectID", "TagName"]; // Added TagName
     case "Palettes":
-      return ["Description", "Values"];
+      return ["Description", "Values", "TagName"]; // Added TagName
     case "Images":
-      return ["Description", "Size", "ChildObjectID"];
+      return ["Description", "Size", "ChildObjectID", "TagName"]; // Added TagName
     case "Animations":
-      return ["Description", "ChildObjectID"];
+      return ["Description", "ChildObjectID", "TagName"]; // Added TagName
     default:
       return [];
   }
@@ -2813,6 +3179,8 @@ function getFieldNames(type,fieldName) {
                 return "Size";
             case "ChildObjectID":
                 return "Palette";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Tiles":
        switch(fieldName){
@@ -2822,6 +3190,8 @@ function getFieldNames(type,fieldName) {
                 return "Size";
             case "ChildObjectID":
                 return "Palette";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Maps":
         switch(fieldName){
@@ -2831,6 +3201,8 @@ function getFieldNames(type,fieldName) {
                 return "Size";
             case "ChildObjectID":
                 return "Tile";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Fonts":
         switch(fieldName){
@@ -2846,6 +3218,8 @@ function getFieldNames(type,fieldName) {
                 return "Last char";
             case "ChildObjectID":
                 return "PalettTilee";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Palettes":
         switch(fieldName){
@@ -2853,6 +3227,8 @@ function getFieldNames(type,fieldName) {
                 return "Description";
             case "Values":
                 return "Colors";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Images":
     switch(fieldName){
@@ -2862,6 +3238,8 @@ function getFieldNames(type,fieldName) {
                 return "Size";
             case "ChildObjectID":
                 return "Palette";
+            case "TagName":
+                return "TagName"; // Added TagName
         }
     case "Animations":
     switch(fieldName){
@@ -2869,6 +3247,8 @@ function getFieldNames(type,fieldName) {
                 return "Description";
             case "ChildObjectID":
                 return "Sprite/Tile";
+            case "TagName":
+                return "TagName"; // Added TagName
         }   
     default:
       return [];
@@ -2935,13 +3315,16 @@ function openImportDialog(record) {
   });
 
   // Check the number of items in the record
+  const ditheringSelect = document.getElementById("dithering");
   if (record.Values && record.Values.length > 0) {
     // Set the palette to the record's palette and disable the combo
     paletteSelect.value = record.ChildObjectID;
     paletteSelect.disabled = true;
+    ditheringSelect.disabled = true;
   } else {
     // Enable the combo for palette selection
     paletteSelect.disabled = false;
+    ditheringSelect.disabled = false;
   }
 
   overlay.style.display = "flex";
@@ -3022,7 +3405,10 @@ document.getElementById("importFile").addEventListener("change", () => {
 });
 
 document.getElementById("importPreview").addEventListener("click", () => {
- 
+  if (!freeImageModuleIsReady){
+    openValidationDialog("FreeImage module is not ready.");
+    return;
+  }
   const recordId = document.getElementById("importDialogOverlay").dataset.recordId;
   const currentType = document.getElementById("typeSelect").value;
   let currentSubtype = "";
@@ -3030,7 +3416,6 @@ document.getElementById("importPreview").addEventListener("click", () => {
     currentSubtype = document.getElementById("subtypeSelect").value;
   }
   const record = dataStore.find(r =>r.Type===currentType && r.Subtype===currentSubtype && r.ID === parseInt(recordId, 10));
-  console.log("RECORD ID",document.getElementById("importDialogOverlay").dataset);
   const importFile = document.getElementById("importFile").files[0];
   const paletteOption = document.getElementById("paletteSelect").value;
   const minColorsDistance = parseInt(document.getElementById("minColorsDistance").value, 10);
@@ -3046,6 +3431,7 @@ document.getElementById("importPreview").addEventListener("click", () => {
   const gapY = parseInt(document.getElementById("gapY").value, 10);
   const posX = parseInt(document.getElementById("posX").value, 10);
   const posY = parseInt(document.getElementById("posY").value, 10);
+  const ditherMethod = document.getElementById("dithering").value;
 
   // Validate number of columns and rows
   if (objectColumns < 1 || objectRows < 1) {
@@ -3092,7 +3478,7 @@ document.getElementById("importPreview").addEventListener("click", () => {
 
       // Validate image dimensions
       if (imgWidth < totalWidth || imgHeight < totalHeight) {
-        openValidationDialog("Dimensione immagine incompatibile con i parametri specificati");
+        openValidationDialog("Image size incompatible with the specified parameters");
         document.getElementById("selectedImage").src = "";
         document.getElementById("importPreview").style.display = "inline-block"; // Ensure the Preview button remains visible
         return;
@@ -3103,7 +3489,6 @@ document.getElementById("importPreview").addEventListener("click", () => {
       const ctx = canvas.getContext("2d");
       canvas.width = totalWidth;
       canvas.height = totalHeight;
-      console.log("SIZES",posX, posY, totalWidth, totalHeight);
       ctx.drawImage(img, posX, posY, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
       const croppedImage = canvas.toDataURL();
       //console.log("CANVAS",canvas);
@@ -3119,19 +3504,20 @@ document.getElementById("importPreview").addEventListener("click", () => {
       // If a new palette needs to be created
       if (paletteOption === "areaonlycolors" || paletteOption === "allimagecolors") {
         //console.log("IMAGE TO USE",paletteOption,croppedImage,base64Image);
-        const imageToUse = paletteOption === "areaonlycolors" ? croppedImage : base64Image;
-        //console.log("IMAGE TO USE",imageToUse); 
+        
+        const imageToUse = paletteOption === "areaonlycolors" ? croppedImage : img.src;
         croppedImportImages=croppedImage;
         noCroppedImportImages=imageToUse;
 
-        processImageForTransparency(croppedImportImages, (processedImage) => {
+        processImageForTransparency(croppedImportImages, (processedImage,imageHasTransparentColors) => {
           croppedImportImages=processedImage;
-
-          processImageForTransparency(noCroppedImportImages, (processedImage) => {
+          croppedImageColorCounter=imageHasTransparentColors?16:15;
+          processImageForTransparency(noCroppedImportImages, (processedImage,imageHasTransparentColors) => {
             noCroppedImportImages=processedImage;
-            getDominantColorsFromDataUrl(noCroppedImportImages, minColorsDistance, croppedImportImages, transparentColors, [recordWidth, recordHeight]);
+            noCroppedImageColorCounter=imageHasTransparentColors?16:15;
+            getDominantColorsFromDataUrl(noCroppedImportImages, minColorsDistance, croppedImportImages, transparentColors, [recordWidth, recordHeight], [totalWidth, totalHeight], [imgWidth, imgHeight],minColorsDistance,ditherMethod, noCroppedImageColorCounter);
         });
-        });
+      });
 
 
 
@@ -3147,7 +3533,7 @@ document.getElementById("importPreview").addEventListener("click", () => {
         const selectedPalette = dataStore.find(p => p.Type === "Palettes" && p.ID.toString() === paletteOption);
         if (selectedPalette) {
           hexPalette = selectedPalette.Values.map(c => c.color.toUpperCase());
-          importItemsFromImage(hexPalette, croppedImage, transparentColors, [recordWidth, recordHeight]);
+          importItemsFromImage(hexPalette, croppedImage, transparentColors, [recordWidth, recordHeight], [totalWidth, totalHeight]);
         }
       }
      
@@ -3180,60 +3566,7 @@ document.getElementById("importClose").addEventListener("click", () => {
 
 
 
-function processImageForTransparency(imageSrc, callback) {
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
 
-    // Get transparent colors from the grid
-    const transparentColors = Array.from(document.querySelectorAll('.transparent-colors input'))
-      .map(input => input.value.toUpperCase())
-      .filter(color => color);
-
-    // Replace transparent pixels with #000000 at 100% transparency
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] < 255) {
-        data[i] = 0;
-        data[i + 1] = 0;
-        data[i + 2] = 0;
-        data[i + 3] = 0;
-      }
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    // Replace opaque #000000 pixels with #010101
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 0 && data[i + 3] === 255) {
-        data[i] = 1;
-        data[i + 1] = 1;
-        data[i + 2] = 1;
-      }
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    // Replace colors present in transparentColors with #000000 transparent
-    for (let i = 0; i < data.length; i += 4) {
-      const pixelColor = `#${((1 << 24) + (data[i] << 16) + (data[i + 1] << 8) + data[i + 2]).toString(16).slice(1).toUpperCase()}`;
-      if (transparentColors.includes(pixelColor)) {
-        data[i] = 0;
-        data[i + 1] = 0;
-        data[i + 2] = 0;
-        data[i + 3] = 0;
-      }
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    const processedImage = canvas.toDataURL();
-    callback(processedImage);
-  };
-  img.src = imageSrc;
-}
 
 function openValidationDialog(message) {
   const overlay = document.getElementById("validationOverlay");
@@ -3355,7 +3688,6 @@ document.getElementById("importImport").addEventListener("click", () => {
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        console.log("PALETTE",importPalette);
         for (let y = 0; y < canvas.height; y++) {
           for (let x = 0; x < canvas.width; x++) {
             const i = (y * canvas.width + x) * 4;
@@ -3445,7 +3777,6 @@ function openConfirmDialog(onConfirm) {
 function exportRecord(record) {
   let cArray='';
   const exportType= dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE").Values;
-  console.log("EXPORT TYPE",exportType);
   switch(record.Type) {
     case "Sprites":
       cArray=exportSprites(record,exportType);
@@ -3531,17 +3862,37 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("targetSelect").addEventListener("change", updateScreenModes);
   document.getElementById("screenModeSelect").addEventListener("change", updateFilteredGrid);
 });
-
 function populatePaletteOptions() {
-  const paletteSelect = document.getElementById("paletteSelect");
-  const palettes = dataStore.filter(r => r.Type === "Palettes");
-  palettes.forEach(palette => {
-    const option = document.createElement("option");
-    option.value = palette.ID;
-    option.textContent = palette.Description;
-    paletteSelect.appendChild(option);
-  });
-}
+    const paletteSelect = document.getElementById("paletteSelect");
+    paletteSelect.innerHTML = ""; // Clear existing options
+    const palettes = dataStore.filter(r => r.Type === "Palettes");
+    palettes.forEach(palette => {
+      const option = document.createElement("option");
+      option.value = palette.ID;
+      option.textContent = palette.Description;
+      paletteSelect.appendChild(option);
+    });
+
+    const codePaletteSelect = document.getElementById("codePaletteSelect"); // Added this line
+    codePaletteSelect.innerHTML = ""; // Clear existing options
+    palettes.forEach(palette => {
+      const option = document.createElement("option");
+      option.value = palette.ID;
+      option.textContent = palette.Description;
+      codePaletteSelect.appendChild(option);
+    });
+  }
+
+//function populatePaletteOptions() {
+//  const paletteSelect = document.getElementById("paletteSelect");
+//  const palettes = dataStore.filter(r => r.Type === "Palettes");
+//  palettes.forEach(palette => {
+//    const option = document.createElement("option");
+//    option.value = palette.ID;
+//    option.textContent = palette.Description;
+//    paletteSelect.appendChild(option);
+//  });
+//}
 
 function updateFilteredGrid() {
   const paletteSelect = document.getElementById("codePaletteSelect").value;
@@ -3748,13 +4099,15 @@ document.getElementById("exportCopy").addEventListener("click", async () => {
   const exportText = document.getElementById("exportText").value;
   try {
     await navigator.clipboard.writeText(exportText);
-    alert("Text copied to clipboard!");
+    alert("Text copied to clipboard.");
   } catch (err) {
     console.error("Failed to copy text: ", err);
   }
 });
 
-function createCombinedImage(record, paletteRecord) {
+function createCombinedImage(record, paletteRecord, show) {
+
+
   const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
   const [width, height] = record.Size.split('x').map(Number);
   const numImages = images.length;
@@ -3768,17 +4121,29 @@ function createCombinedImage(record, paletteRecord) {
   canvas.height = totalHeight;
   const ctx = canvas.getContext('2d');
 
-  images.forEach((imageData, index) => {
-    const img = new Image();
-    img.onload = () => {
-      const col = index % numCols;
-      const row = Math.floor(index / numCols);
-      ctx.drawImage(img, width * col, height * row, width, height);
-      if (index === images.length - 1) {
-        document.getElementById("combinedImage").src = canvas.toDataURL();
-      }
-    };
-    img.src = imageData;
+  return new Promise((resolve, reject) => {
+    let loadedImages = 0;
+
+    images.forEach((imageData, index) => {
+      const img = new Image();
+      img.onload = () => {
+        const col = index % numCols;
+        const row = Math.floor(index / numCols);
+        ctx.drawImage(img, width * col, height * row, width, height);
+        loadedImages++;
+
+        if (loadedImages === images.length) {
+          if (show) {
+            document.getElementById("combinedImage").src = canvas.toDataURL();
+            resolve();
+          } else {
+            resolve(canvas);
+          }
+        }
+      };
+      img.onerror = reject;
+      img.src = imageData;
+    });
   });
 }
 
@@ -3796,7 +4161,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const blob = await response.blob();
       const item = new ClipboardItem({ "image/png": blob });
       await navigator.clipboard.write([item]);
-      //alert("Image copied to clipboard!");
+      //alert("Image copied to clipboard.");
     } catch (err) {
       console.error("Failed to copy image: ", err);
     }
@@ -3814,33 +4179,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function createCombinedImage(record, paletteRecord) {
-  const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
-  const [width, height] = record.Size.split('x').map(Number);
-  const numImages = images.length;
-  const numCols = Math.ceil(Math.sqrt(numImages));
-  const numRows = Math.ceil(numImages / numCols);
-  const totalWidth = width * numCols;
-  const totalHeight = height * numRows;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
-  const ctx = canvas.getContext('2d');
-
-  images.forEach((imageData, index) => {
-    const img = new Image();
-    img.onload = () => {
-      const col = index % numCols;
-      const row = Math.floor(index / numCols);
-      ctx.drawImage(img, width * col, height * row, width, height);
-      if (index === images.length - 1) {
-        document.getElementById("combinedImage").src = canvas.toDataURL();
-      }
-    };
-    img.src = imageData;
-  });
-}
 </script>
 </body>
 </html>

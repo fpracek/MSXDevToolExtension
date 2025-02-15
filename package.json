@@ -2,7 +2,7 @@
   "name": "msxdevtool-extension",
   "displayName": "MSXDevTool Extension",
   "description": "MSXDevTool Extension for Visual Studio Code",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -21,7 +21,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./"
+    "compile": "tsc -p ./ "
   },
   "devDependencies": {
     "@types/node": "16.x",
@@ -34,7 +34,9 @@
     "url": "https://github.com/fpracek/MSXDevToolExtension.git"
   },
   "dependencies": {
+    "detect-libc": "^2.0.3",
     "monaco-editor": "^0.52.2",
+    "node-abi": "^3.73.0",
     "node-addon-api": "^8.3.0"
   }
 }
