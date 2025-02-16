@@ -56,7 +56,6 @@ let selectedCells: any[] = []; // Variable to store selected cells
 
 
 export async function replaceTagInFiles(language: string, id: string, data: string) {
-    console.log("language: ", language);
     const prefix = language === 'asm' ? '; ' : '// ';
 
     try {
@@ -89,7 +88,7 @@ export async function replaceTagInFiles(language: string, id: string, data: stri
                         
                         // Righe da inserire
                         const dataLines = data.split(/\r?\n/);
-                        
+         
                         // Sostituzione delle righe
                         lines.splice(
                             beginIndex + 1,
@@ -134,25 +133,7 @@ export async function replaceTagInFiles(language: string, id: string, data: stri
     }
 }
 
-
-
-
-export function activate(context: vscode.ExtensionContext) {
-  // Dispose of any open panels on activation
-  if (mainPanel) {
-    mainPanel.dispose();
-    mainPanel = null;
-  }
-  if (detailsPanel) {
-    detailsPanel.dispose();
-    detailsPanel = null;
-  }
-
-  if (targetedDetailsPanel) {
-    targetedDetailsPanel.dispose();
-    targetedDetailsPanel = null;
-  }
-
+function GetJSONData(){
   let loadedData: DataObject[] | null = null;
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders && workspaceFolders.length > 0) {
@@ -196,16 +177,36 @@ export function activate(context: vscode.ExtensionContext) {
         }
       ];
       fs.writeFileSync(dataPath, JSON.stringify(defaultData), 'utf8');
-      console.log('Default data file created.');
       loadedData = defaultData;
     } else {
       const data = fs.readFileSync(dataPath, 'utf8');
-      console.log('Data loaded from file:', data);
       loadedData = JSON.parse(data);
     }
+    
   } else {
     console.error('No workspace folder found');
   }
+  return loadedData;
+}
+
+
+export function activate(context: vscode.ExtensionContext) {
+  // Dispose of any open panels on activation
+  if (mainPanel) {
+    mainPanel.dispose();
+    mainPanel = null;
+  }
+  if (detailsPanel) {
+    detailsPanel.dispose();
+    detailsPanel = null;
+  }
+
+  if (targetedDetailsPanel) {
+    targetedDetailsPanel.dispose();
+    targetedDetailsPanel = null;
+  }
+
+  let loadedData=GetJSONData();
 
   // Register the command
   const disposable = vscode.commands.registerCommand(
@@ -289,9 +290,7 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
 
 
 
-function codeSync(language: string, id: string, data: string): void {
-  replaceTagInFiles(language, id, data);
-}
+
 
   htmlContent = htmlContent.replace('utils_js_URI', scriptUri.toString());
   //htmlContent = htmlContent.replace('initWasm_js_URI', wasmUri.toString());
@@ -304,7 +303,6 @@ function codeSync(language: string, id: string, data: string): void {
 
   // Send the loaded data to the webview
   mainPanel.webview.onDidReceiveMessage(message => {
-    console.log('Message received:', message);
     switch (message.command) {
       case 'CodeSynch':
         codeSync(message.language, message.id, message.data);
@@ -326,18 +324,21 @@ function codeSync(language: string, id: string, data: string): void {
         return;
       case 'updateSelectedCells':
         selectedCells = message.selectedCells;
-        console.log('Selected cells updated:', selectedCells);
         return;
       case 'dispose':
         disposeExtension();
         return;
     }
   });
-
+  loadedData=GetJSONData();
   mainPanel.webview.postMessage({
     command: 'loadDataStore',
     data: JSON.stringify(loadedData)
   });
+}
+
+function codeSync(language: string, id: string, data: string): void {
+  replaceTagInFiles(language, id, data);
 }
 
 function openDetailsView(context: vscode.ExtensionContext, record: DataObject, childRecord: DataObject | null, spriteTilePaletteRecord: DataObject | null, type: string | null, dataStore:[] | null) {
@@ -425,7 +426,6 @@ function openDetailsView(context: vscode.ExtensionContext, record: DataObject, c
         return;
       case 'updateSelectedCells':
         selectedCells = message.selectedCells;
-        console.log('Selected cells updated:', selectedCells);
         return;
     }
   });
@@ -471,7 +471,6 @@ function openTargetedDetailsView(context: vscode.ExtensionContext, record: DataO
   // Set the HTML content in the panel
   targetedDetailsPanel.webview.html = htmlContent;
 
-  console.log(objectID);
   // Send the data to the webview
   targetedDetailsPanel.webview.postMessage({
     command: 'loadDetails',
@@ -508,7 +507,6 @@ function openTargetedDetailsView(context: vscode.ExtensionContext, record: DataO
         return;
       case 'updateSelectedCells':
         selectedCells = message.selectedCells;
-        console.log('Selected cells updated:', selectedCells);
         return;
     }
   });
@@ -580,7 +578,6 @@ function closeDetailsView(context: vscode.ExtensionContext, record: DataObject, 
           }
         }
     
-        console.log('Data reloaded from file:', loadedData);
 
         if(!fromTargetedDetailPanel){
           mainPanel.webview.postMessage({
@@ -603,13 +600,11 @@ function saveDataToFile(data: string) {
     const workspacePath = workspaceFolders[0].uri.fsPath;
     const folderPath = path.join(workspacePath, 'MSXDevToolExtension');
     const dataPath = path.join(folderPath, 'Objects.json');
-    console.log(`Saving data to: ${dataPath}`);
     try {
       if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath);
       }
       fs.writeFileSync(dataPath, data, 'utf8');
-      console.log('Data saved successfully.');
     } catch (error) {
       console.error('Error saving data:', error);
     }

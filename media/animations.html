@@ -982,7 +982,6 @@
       
     }
     function openObjectDetails(id) {
-      console.log("ID",id);
       vscode.postMessage({
         command: "openTargetedDetailsView",
         record: currentChildRecord,
@@ -1583,7 +1582,6 @@
     });
 
     document.getElementById('animationList').addEventListener('change', (event) => {
-      console.log ("animationList change");
       const animationList = event.target;
       const selectedID = parseInt(animationList.value, 10);
       const selectedOption = currentRecord.Values.find(value => value.ID === selectedID);
