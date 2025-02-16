@@ -5,8 +5,11 @@ It is possible to draw, import and modify sprites (both type 1 and type 2), tile
 From all these items it is possible to generate the relevant data arrays for use in C, MSX-C, Assembly, Pascal and MSX-BASIC.
 There is also a feature to immediately test the movement of the sprites.
 
-For info and issues:
+For info, source code and issues:
 https://github.com/fpracek/MSXDevToolExtension
+
+For FreeImage WASM library:
+https://github.com/fpracek/MSXimgWASM
 
 fpracek@gmail.com
 
