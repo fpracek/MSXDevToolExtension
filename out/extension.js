@@ -288,7 +288,7 @@ function getHtmlContent() {
   </head>
   <body>
     <div class="button" onclick="openDesigner()">Open designer</div>
-    <div class="button" style="margin-top:10px;background-color: #000000" onclick="copyJsonDataToClipboard()">Get JSON data</div>
+    <div class="button" style="margin-top:10px;background-color: #000000" onclick="copyJsonDataToClipboard()">Copy JSON data</div>
     <script>
       const vscode = acquireVsCodeApi();
       function openDesigner() {

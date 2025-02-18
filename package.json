@@ -41,6 +41,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./ "
   },
+  "activationEvents": [],
   "devDependencies": {
     "@types/node": "16.x",
     "@types/vscode": "^1.75.0",
