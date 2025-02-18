@@ -1,0 +1,13 @@
+<svg width="100" height="24" viewBox="0 0 100 24" version="1.1"
+     xmlns="http://www.w3.org/2000/svg">
+  <!-- Sfondo blu scuro (per tema dark) -->
+  <rect width="100" height="24" fill="#005A9E" />
+  
+  <!-- Testo bianco -->
+  <text x="10" y="16"
+        fill="white"
+        font-family="sans-serif"
+        font-size="12">
+    Open designer
+  </text>
+</svg>

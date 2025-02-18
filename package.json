@@ -2,7 +2,7 @@
   "name": "msxdevtool-extension",
   "displayName": "MSXDevTool Extension",
   "description": "MSXDevTool Extension for Visual Studio Code",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -17,13 +17,30 @@
         "command": "msxdevtool-extension.openWebview",
         "title": "MSXDev tool"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "msxdevtool",
+          "title": "MSXDev Tool",
+          "icon": "media/icon.png"
+        }
+      ]
+    },
+    "views": {
+      "msxdevtool": [
+        {
+          "type": "webview",
+          "id": "msxDevToolWebview",
+          "name": "Open designer"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./ "
   },
-  "activationEvents": [],
   "devDependencies": {
     "@types/node": "16.x",
     "@types/vscode": "^1.75.0",

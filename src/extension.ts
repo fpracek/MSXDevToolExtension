@@ -206,7 +206,7 @@ export function activate(context: vscode.ExtensionContext) {
     targetedDetailsPanel = null;
   }
 
-  let loadedData=GetJSONData();
+  let loadedData = GetJSONData();
 
   // Register the command
   const disposable = vscode.commands.registerCommand(
@@ -231,6 +231,126 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(disposable);
+
+  // Register the view provider for the activity bar icon
+  //const msxdevtoolViewProvider = new MSXDevToolViewProvider(context.extensionUri);
+  //context.subscriptions.push(
+  //  vscode.window.registerWebviewViewProvider(
+  //    MSXDevToolViewProvider.viewType,
+  //    msxdevtoolViewProvider
+  //  )
+  //);
+
+  // Register the command to open the webview when the activity bar icon is clicked
+  context.subscriptions.push(
+    vscode.commands.registerCommand('msxdevtool.msxdevtoolView', () => {
+      vscode.commands.executeCommand('msxdevtool-extension.openWebview');
+    })
+  );
+
+  // Register the WebviewViewProvider for the view
+  const webviewProvider = new MSXDevToolWebviewProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider('msxDevToolWebview', webviewProvider)
+  );
+}
+
+//class MSXDevToolViewProvider implements vscode.WebviewViewProvider {
+//  public static readonly viewType = 'msxdevtool.msxdevtoolView';
+//
+//  constructor(private readonly extensionUri: vscode.Uri) {}
+//
+//  public resolveWebviewView(
+//    webviewView: vscode.WebviewView,
+//    context: vscode.WebviewViewResolveContext,
+//    _token: vscode.CancellationToken
+//  ) {
+//    initializeMainPanel({ extensionUri: this.extensionUri } as vscode.ExtensionContext, GetJSONData());
+//  }
+//}
+
+class MSXDevToolWebviewProvider implements vscode.WebviewViewProvider {
+  constructor(readonly contextParam: vscode.ExtensionContext) {}
+
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    context: vscode.WebviewViewResolveContext<unknown>,
+    token: vscode.CancellationToken
+  ) {
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = getHtmlContent(); 
+    // `getHtmlContent()` restituisce la tua pagina HTML 
+    // con pulsante a tutta larghezza, sfondo azzurro, ecc.
+
+    // Gestisci i messaggi dal webview e i comandi VS Code se serve...
+    webviewView.webview.onDidReceiveMessage(message => {
+      switch (message.command) {
+        case 'copyJsonDataToClipboard':
+          vscode.env.clipboard.writeText(JSON.stringify(GetJSONData()));
+          break;
+        case 'openDesigner':
+          if (!mainPanel && !detailsPanel) {
+            initializeMainPanel(this.contextParam, GetJSONData());
+          } else {
+            if (mainPanel) {
+              mainPanel.reveal();
+            }
+            if (detailsPanel) {
+              detailsPanel.reveal();
+            }
+          }
+          break;
+      }
+    });
+  }
+
+  
+}
+
+function getHtmlContent(): string {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Open Designer</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+      /* Semplice "bottone" di 100×24 con sfondo blu e testo bianco */
+      .button {
+        width: 100%;
+        height: 28px;
+        background-color: #007ACC; /* blu come da svg light */
+        color: #ffffff;
+        font-family: sans-serif;
+        font-size: 16px;
+        line-height: 24px;  /* per allineare verticalmente il testo */
+        text-indent: 10px;  /* offset orizzontale del testo */
+        box-sizing: border-box;
+        text-align: center;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="button" onclick="openDesigner()">Open designer</div>
+    <div class="button" style="margin-top:10px;background-color: #000000" onclick="copyJsonDataToClipboard()">Copy JSON data</div>
+    <script>
+      const vscode = acquireVsCodeApi();
+      function openDesigner() {
+        vscode.postMessage({ command: 'openDesigner' });
+      }
+      function copyJsonDataToClipboard() {
+        vscode.postMessage({ command: 'copyJsonDataToClipboard' });
+      }
+    </script>
+  </body>
+  </html>
+  `;
+  
 }
 
 function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataObject[] | null) {
@@ -301,6 +421,7 @@ function initializeMainPanel(context: vscode.ExtensionContext, loadedData: DataO
   // Set the HTML content in the panel
   mainPanel.webview.html = htmlContent;
 
+  
   // Send the loaded data to the webview
   mainPanel.webview.onDidReceiveMessage(message => {
     switch (message.command) {
