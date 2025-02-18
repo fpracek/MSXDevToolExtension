@@ -12,7 +12,7 @@
  * (at your option) any later version.
  *
  * MSXDev Tool Extension for VS Code is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * but without ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
@@ -763,7 +763,8 @@
 
       renderImages('imagesList1', objectsList);
       updateTab2Grid();
-     
+      updatePreviewImage();
+      updatePreviewImageInfo();
 
       // Set initial background colors from EditingSettings
       if (record.EditingSettings) {
@@ -1038,6 +1039,7 @@
       const col = Math.floor(x / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
       const row = Math.floor(y / (20 * (currentRecord.EditingSettings.GridEditorZoom || 1)));
 
+
       if (isPasting) {
         if (event.button === 0) { // Left click
           pasteStart = { row, col };
@@ -1067,7 +1069,7 @@
 
       let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
       
-      if (event.button === 0) { // Left click
+      if (event.button === 0) { // Left click 
         if (currentPaletteColorID.toString() === "0" && currentRecord.Type === "Tiles" && currentRecord.Subtype === "Standard") {
           return;
         }
@@ -1094,7 +1096,6 @@
         
         renderImages('imagesList1', objectsList);
         updateTab1Grid(currentRecord,currentChildRecord);
-     
       }, 150); // Adjust the delay as needed
       
     }
@@ -1642,6 +1643,8 @@
         }
 
         updateGridCanvas();
+        updatePreviewImage();
+        updatePreviewImageInfo();
       } else if (gridId === 'imagesList2' && currentObjectID !== -1) {
         const objectRecord = currentRecord.Values.find(o => o.ID === currentObjectID);
         if (objectRecord) {
@@ -1671,6 +1674,8 @@
           }
 
           updateGridCanvas();
+          updatePreviewImage();
+          updatePreviewImageInfo();
         }
       }
     }
@@ -2513,11 +2518,8 @@
       }
       
       if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
-        
         if (currentChildRecord.Values.find(p => p.id.toString() === colorID.toString()).color !== '#000000') {
-          
           matrix.forEach(cell => {
-      
             if (cell.PosY === row && (cell.PosX === col || cell.Value.toString() !== '0')) {
               cell.Value = colorID;
             }
@@ -2538,6 +2540,7 @@
       } else {
         matrix.find(m => m.PosY === row && m.PosX === col).Value = colorID;
       }
+
     }
 
     function toggleOrOption(row) {
@@ -2592,9 +2595,11 @@
         // Disable "PenFill" option if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
         const penFillOption = document.getElementById('penFill');
         if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
-          penFillOption.style.display = 'none';
+          penFillOption.style.pointerEvents = 'none';
+          penFillOption.style.color = 'gray';
         } else {
-          penFillOption.style.display = 'block';
+          penFillOption.style.pointerEvents = 'auto';
+          penFillOption.style.color = 'black';
           penFillOption.textContent = isFillMode ? 'Pen' : 'Fill';
         }
 
@@ -2610,21 +2615,12 @@
         const shiftUpOption = document.getElementById('shiftUp');
         const shiftDownOption = document.getElementById('shiftDown');
         const verticalFlipOption = document.getElementById('verticalFlip');
+        const horizontalFlipOption = document.getElementById('horizontalFlip');
+        const clearAllOption = document.getElementById('clearAll');
         const hasSelection = selectionStart && selectionEnd;
         const [width, height] = currentRecord.Size.split('x').map(Number);
 
         if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
-          copyOption.style.color = 'gray';
-          cutOption.style.color = 'gray';
-          pasteOption.style.color = 'gray';
-          selectAllOption.style.color = 'gray';
-          rotateRightOption.style.color = 'gray';
-          rotateLeftOption.style.color = 'gray';
-          shiftLeftOption.style.color = 'gray';
-          shiftRightOption.style.color = 'gray';
-          shiftUpOption.style.color = 'gray';
-          shiftDownOption.style.color = 'gray';
-          verticalFlipOption.style.color = 'gray';
           copyOption.style.pointerEvents = 'none';
           cutOption.style.pointerEvents = 'none';
           pasteOption.style.pointerEvents = 'none';
@@ -2636,34 +2632,35 @@
           shiftUpOption.style.pointerEvents = 'none';
           shiftDownOption.style.pointerEvents = 'none';
           verticalFlipOption.style.pointerEvents = 'none';
+          horizontalFlipOption.style.pointerEvents = 'none';
+          clearAllOption.style.pointerEvents = 'none';
         } else {
-          copyOption.style.color = hasSelection ? 'black' : 'gray';
-          cutOption.style.color = hasSelection ? 'black' : 'gray';
-          pasteOption.style.color = copiedCells.length > 0 ? 'black' : 'gray';
-          selectAllOption.style.color = 'black';
-          rotateRightOption.style.color = 'black';
-          rotateLeftOption.style.color = 'black';
-          shiftLeftOption.style.color = 'black';
-          shiftRightOption.style.color = 'black';
-          shiftUpOption.style.color = 'black';
-          shiftDownOption.style.color = 'black';
-          verticalFlipOption.style.color = 'black';
           copyOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
           cutOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
           pasteOption.style.pointerEvents = copiedCells.length > 0 ? 'auto' : 'none';
           selectAllOption.style.pointerEvents = 'auto';
-          if (width != height) {
-            rotateRightOption.style.color = 'gray';
-            rotateLeftOption.style.color = 'gray';
-            rotateRightOption.style.pointerEvents = 'none';
-            rotateLeftOption.style.pointerEvents = 'none';
-          } else {
-            rotateRightOption.style.color = 'black';
-            rotateLeftOption.style.color = 'black';
-            rotateRightOption.style.pointerEvents = 'auto';
-            rotateLeftOption.style.pointerEvents = 'auto';
-          }
+          rotateRightOption.style.pointerEvents = width === height ? 'auto' : 'none';
+          rotateLeftOption.style.pointerEvents = width === height ? 'auto' : 'none';
+          shiftLeftOption.style.pointerEvents = 'auto';
+          shiftRightOption.style.pointerEvents = 'auto';
+          shiftUpOption.style.pointerEvents = 'auto';
+          shiftDownOption.style.pointerEvents = 'auto';
+          verticalFlipOption.style.pointerEvents = 'auto';
+          horizontalFlipOption.style.pointerEvents = 'auto';
+          clearAllOption.style.pointerEvents = 'auto';
         }
+
+        // Reassign colors based on accessibility
+        const options = [
+          copyOption, cutOption, pasteOption, selectAllOption,
+          rotateRightOption, rotateLeftOption, shiftLeftOption,
+          shiftRightOption, shiftUpOption, shiftDownOption,
+          verticalFlipOption, horizontalFlipOption, clearAllOption
+        ];
+
+        options.forEach(option => {
+          option.style.color = option.style.pointerEvents === 'none' ? 'gray' : 'black';
+        });
 
         // Close the context menu when clicking outside
         document.addEventListener('click', closeContextMenu);
@@ -2964,9 +2961,23 @@
       let matrix = currentRecord.Values.find(v => v.ID === currentObjectID).Matrices.find(m => m.ID === (currentRecord.Subtype === "Type 2" ? currentMatrixID : 1)).Values;
       const [width, height] = currentRecord.Size.split('x').map(Number);
 
+      const newMatrix = [];
+      const cellMap = new Map();
+
       matrix.forEach(cell => {
-        cell.PosX = width - 1 - cell.PosX;
+        const newPosX = width - 1 - cell.PosX;
+        const key = `${newPosX},${cell.PosY}`;
+        if (!cellMap.has(key)) {
+          cellMap.set(key, { PosX: newPosX, PosY: cell.PosY, Value: cell.Value });
+        } else {
+          cellMap.get(key).Value = cell.Value;
+        }
       });
+
+      cellMap.forEach(cell => newMatrix.push(cell));
+
+      matrix.length = 0;
+      newMatrix.forEach(cell => matrix.push(cell));
 
       updateGridCanvas();
       renderImages('imagesList1', objectsList);
@@ -3024,9 +3035,11 @@
         // Disable "PenFill" option if currentRecord.Type is "Sprites" and currentRecord.Subtype is "Type 2"
         const penFillOption = document.getElementById('penFill');
         if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
-          penFillOption.style.display = 'none';
+          penFillOption.style.pointerEvents = 'none';
+          penFillOption.style.color = 'gray';
         } else {
-          penFillOption.style.display = 'block';
+          penFillOption.style.pointerEvents = 'auto';
+          penFillOption.style.color = 'black';
           penFillOption.textContent = isFillMode ? 'Pen' : 'Fill';
         }
 
@@ -3042,21 +3055,12 @@
         const shiftUpOption = document.getElementById('shiftUp');
         const shiftDownOption = document.getElementById('shiftDown');
         const verticalFlipOption = document.getElementById('verticalFlip');
+        const horizontalFlipOption = document.getElementById('horizontalFlip');
+        const clearAllOption = document.getElementById('clearAll');
         const hasSelection = selectionStart && selectionEnd;
         const [width, height] = currentRecord.Size.split('x').map(Number);
 
         if (currentRecord.Type === "Sprites" && currentRecord.Subtype === "Type 2") {
-          copyOption.style.color = 'gray';
-          cutOption.style.color = 'gray';
-          pasteOption.style.color = 'gray';
-          selectAllOption.style.color = 'gray';
-          rotateRightOption.style.color = 'gray';
-          rotateLeftOption.style.color = 'gray';
-          shiftLeftOption.style.color = 'gray';
-          shiftRightOption.style.color = 'gray';
-          shiftUpOption.style.color = 'gray';
-          shiftDownOption.style.color = 'gray';
-          verticalFlipOption.style.color = 'gray';
           copyOption.style.pointerEvents = 'none';
           cutOption.style.pointerEvents = 'none';
           pasteOption.style.pointerEvents = 'none';
@@ -3068,34 +3072,35 @@
           shiftUpOption.style.pointerEvents = 'none';
           shiftDownOption.style.pointerEvents = 'none';
           verticalFlipOption.style.pointerEvents = 'none';
+          horizontalFlipOption.style.pointerEvents = 'none';
+          clearAllOption.style.pointerEvents = 'none';
         } else {
-          copyOption.style.color = hasSelection ? 'black' : 'gray';
-          cutOption.style.color = hasSelection ? 'black' : 'gray';
-          pasteOption.style.color = copiedCells.length > 0 ? 'black' : 'gray';
-          selectAllOption.style.color = 'black';
-          rotateRightOption.style.color = 'black';
-          rotateLeftOption.style.color = 'black';
-          shiftLeftOption.style.color = 'black';
-          shiftRightOption.style.color = 'black';
-          shiftUpOption.style.color = 'black';
-          shiftDownOption.style.color = 'black';
-          verticalFlipOption.style.color = 'black';
           copyOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
           cutOption.style.pointerEvents = hasSelection ? 'auto' : 'none';
           pasteOption.style.pointerEvents = copiedCells.length > 0 ? 'auto' : 'none';
           selectAllOption.style.pointerEvents = 'auto';
-          if (width != height) {
-            rotateRightOption.style.color = 'gray';
-            rotateLeftOption.style.color = 'gray';
-            rotateRightOption.style.pointerEvents = 'none';
-            rotateLeftOption.style.pointerEvents = 'none';
-          } else {
-            rotateRightOption.style.color = 'black';
-            rotateLeftOption.style.color = 'black';
-            rotateRightOption.style.pointerEvents = 'auto';
-            rotateLeftOption.style.pointerEvents = 'auto';
-          }
+          rotateRightOption.style.pointerEvents = width === height ? 'auto' : 'none';
+          rotateLeftOption.style.pointerEvents = width === height ? 'auto' : 'none';
+          shiftLeftOption.style.pointerEvents = 'auto';
+          shiftRightOption.style.pointerEvents = 'auto';
+          shiftUpOption.style.pointerEvents = 'auto';
+          shiftDownOption.style.pointerEvents = 'auto';
+          verticalFlipOption.style.pointerEvents = 'auto';
+          horizontalFlipOption.style.pointerEvents = 'auto';
+          clearAllOption.style.pointerEvents = 'auto';
         }
+
+        // Reassign colors based on accessibility
+        const options = [
+          copyOption, cutOption, pasteOption, selectAllOption,
+          rotateRightOption, rotateLeftOption, shiftLeftOption,
+          shiftRightOption, shiftUpOption, shiftDownOption,
+          verticalFlipOption, horizontalFlipOption, clearAllOption
+        ];
+
+        options.forEach(option => {
+          option.style.color = option.style.pointerEvents === 'none' ? 'gray' : 'black';
+        });
 
         // Close the context menu when clicking outside
         document.addEventListener('click', closeContextMenu);

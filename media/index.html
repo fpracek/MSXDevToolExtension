@@ -518,7 +518,6 @@
     </select>
     <label style="float: right; margin-left: 10px;padding-top: 5px;">Export language:</label>
     <button id="codeGeneratorButton" style="float: right; margin-left: 10px;">MSXgl code generator...</button>
-    <button id="codeSynchAllButton" style="float: right; margin-left: 10px;">Sync all items...</button>
   </div>
 
   <!-- DATA TABLE -->
@@ -882,15 +881,13 @@ let codeGeneratorScreenMode="";
 let noCroppedImageColorCounter=0;
 let croppedImageColorCounter=0;
 
-
-
-
 /* ======================================================================================
    MOCK DATA
    ====================================================================================== */
 
 function loadDataStore(data) {
   dataStore = JSON.parse(data);
+ 
 
   // Set the export language combo box value
   const exportLanguageSelect = document.getElementById("exportLanguageSelect");
@@ -980,12 +977,6 @@ function updateSubtypeCombo() {
 }
 
 function updateGrid() {
-  if (document.getElementById("exportLanguageSelect").value==="c" || document.getElementById("exportLanguageSelect").value.toString().substring(0,3)==="asm") {
-    document.getElementById("codeSynchAllButton").classList.remove("hidden");
-  }
-  else{
-    document.getElementById("codeSynchAllButton").classList.add("hidden");
-  }
   const type = document.getElementById("typeSelect").value;
   const subtypeCombo = document.getElementById("subtypeSelect");
   let subtype = "";
@@ -1204,7 +1195,7 @@ function renderGrid(typeFilter, subtypeFilter) {
           }
           
         }
-        openConfirmDialog("Are you sure to delete this item?",() => {
+        openConfirmDialog(() => {
           dataStore = dataStore.filter(r => !(r.Type === row.Type && r.ID === row.ID));
           saveDataStore();
           updateGrid();
@@ -1240,7 +1231,7 @@ function renderGrid(typeFilter, subtypeFilter) {
       }
 
       // Get image button
-      if (["Sprites", "Fonts", "Images", "Tiles"].includes(typeFilter) && row.Values && row.Values.length > 0) {
+      if (["Sprites", "Fonts", "Images", "Tiles"].includes(typeFilter)) {
         let btnGetImage = document.createElement("button");
         btnGetImage.textContent = "Get image...";
         btnGetImage.className = "action-button getimage-button";
@@ -1257,8 +1248,8 @@ function renderGrid(typeFilter, subtypeFilter) {
       }
       // Code sync button
 
-   
-      if (row.Type !== "Animations" && row.Values && row.Values.length > 0){
+
+      if (row.Type !== "Animations" ){
         if(expLanguageSelect.value==="c" || expLanguageSelect.value.toString().substring(0,3)==="asm"){
           let codeUpdateBtn = document.createElement("button");
           codeUpdateBtn.className = "action-button codesync-button";
@@ -2059,17 +2050,13 @@ function focusOnColorSquare() {
 /* ======================================================================================
    CONFIRM DIALOG
    ====================================================================================== */
-
-
-function openConfirmDialog(message,onConfirm) {
+function openConfirmDialog(onConfirm) {
   const overlay = document.getElementById("confirmOverlay");
   const okBtn = document.getElementById("confirmOk");
   const cancelBtn = document.getElementById("confirmCancel");
-  const msg = document.getElementById("confirmDialog").querySelector("p");
-  msg.textContent = message;
 
   overlay.style.display = "flex";
-  overlay.style.zIndex = "9999"; 
+
   let onOk = () => {
     closeConfirm();
     onConfirm();
@@ -2187,10 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   document.getElementById("exportLanguageSelect").addEventListener("change", () => {
-
     updateGrid();
-    dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE").Values = document.getElementById("exportLanguageSelect").value;
-    saveDataStore();
   });
   document.getElementById("dataGrid").addEventListener("click", (e) => {
     if (e.target.classList.contains("imports-button")) {
@@ -2205,34 +2189,7 @@ document.addEventListener("DOMContentLoaded", () => {
       openImportDialog(record);
     }
   });
-  document.getElementById("codeSynchAllButton").addEventListener("click", async (e) => {
-    openConfirmDialog("Do you want synch all items with your code?",async () => {
-      
-      const expLanguageSelect = document.getElementById("exportLanguageSelect");
-      dataStore.forEach(async record => {
-        if (record.Type !== "Animations" && record.Values.length > 0) {
 
-          
- 
-          
-          const codeData=await exportRecord(record.Type,record.Subtype,record.ID, expLanguageSelect, false);
-
-
-          console.log("tagName",record.TagName);
-              vscode.postMessage({
-                command: "CodeSynch",
-                language: expLanguageSelect.value==="c"?"c":"asm",
-                data: codeData,
-                id: record.TagName
-              });
-            }
-      
-        });
-      
-
-    });
-    
-  });
   document.getElementById("dataGrid").addEventListener("click", async (e) => {
     const currentType = document.getElementById("typeSelect").value;
     let currentSubtype = "";
@@ -2244,12 +2201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tagName=dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10)).TagName;
     const expLanguageSelect = document.getElementById("exportLanguageSelect");
     if (e.target.classList.contains("codesync-button")) {
-      const currentType = document.getElementById("typeSelect").value;
-      let currentSubtype = "";
-      if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
-        currentSubtype = document.getElementById("subtypeSelect").value;
-      }
-      const codeData=await exportRecord(currentType,currentSubtype,recordId, expLanguageSelect, false);
+      const codeData=await exportRecord(recordId, expLanguageSelect, false);
      
       vscode.postMessage({
         command: "CodeSynch",
@@ -2261,17 +2213,17 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (e.target.classList.contains("export-button")) {
       
-      const currentType = document.getElementById("typeSelect").value;
+      
+      await exportRecord(recordId, expLanguageSelect, true);
+      
+    }
+});
+async function exportRecord(recordId, expLanguageSelect, displayData) {
+  const currentType = document.getElementById("typeSelect").value;
       let currentSubtype = "";
       if (!document.getElementById("subtypeSelect").classList.contains("hidden")) {
         currentSubtype = document.getElementById("subtypeSelect").value;
       }
-      await exportRecord(currentType,currentSubtype,recordId, expLanguageSelect, true);
-      
-    }
-});
-async function exportRecord(currentType,currentSubtype,recordId, expLanguageSelect, displayData) {
-  
       const record = dataStore.find(r => r.Type === currentType && r.Subtype === currentSubtype && r.ID === parseInt(recordId, 10));
 
       if(record.Type==="Palettes"){
@@ -2497,11 +2449,9 @@ async function exportRecord(currentType,currentSubtype,recordId, expLanguageSele
   if (settingExportType) {
     exportLanguageSelect.value = settingExportType.Values;
   } else {
-    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "c" });
-    exportLanguageSelect.value = "c";
+    dataStore.push({ Type: "SETTING_EXPORT_TYPE", Values: "C (MSXgl)" });
+    exportLanguageSelect.value = "C (MSXgl)";
   }
-
-
 
   document.getElementById("codeGeneratorButton").addEventListener("click", () => {
     document.getElementById("codeGeneratorModal").style.display = "flex";
@@ -2712,6 +2662,7 @@ function getDominantColorsFromDataUrl(base64Image, distancy,croppedImage,transpa
         //var palette = colorThief.getPalette(img, thiefMaxColors, 0); 
       const dataUrl = img.src;                              // "data:image/png;base64,iVBORw0K..."
       const base64String = dataUrl.split("base64,")[1]; 
+      console.log("COUNT",colorsCount);
       const imageData=getPngDataArray(base64String,"table",imageWidth,imageHeight,1,1,"custom",0,0,0,0,4,"import",true,0,false,0,null,colorsCount,paletteOffset,false,false,"bmp",ditherMethod,"hexa0x","","none",null,0,0,0,0,false,false,true);
       if(imageData[0].toString()=="-1"){
           openValidationDialog(imageData[1]);
@@ -3701,7 +3652,7 @@ selectedImagePanel.addEventListener("mousemove", (e) => {
 });
 
 document.getElementById("importImport").addEventListener("click", () => {
-  openConfirmDialog("Are you sure to import these items?",() => {
+  openConfirmDialog(() => {
     const recordId = document.getElementById("importDialogOverlay").dataset.recordId;
     const currentType = document.getElementById("typeSelect").value;
     let currentSubtype = "";
@@ -3796,36 +3747,61 @@ function getNextOrder(values) {
   return Math.max(...values.map(v => v.Order)) + 1;
 }
 
+function openConfirmDialog(onConfirm) {
+  const overlay = document.getElementById("confirmOverlay");
+  const msg = document.getElementById("confirmDialog").querySelector("p");
+  const okBtn = document.getElementById("confirmOk");
+  const cancelBtn = document.getElementById("confirmCancel");
 
+  msg.textContent = "Are you sure to import these items?";
+  overlay.style.display = "flex";
+  overlay.style.zIndex = "9999"; // Ensure the z-index is the same as the color picker dialog
 
-//function exportRecord(record) {
-//  let cArray='';
-//  const exportType= dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE").Values;
-//  switch(record.Type) {
-//    case "Sprites":
-//      cArray=exportSprites(record,exportType);
-//      break;
-//    case "Tiles":
-//      cArray=exportTiles(record,exportType);
-//          break;
-//    case "Maps":
-//      cArray=exportMaps(record,exportType);
-//      break;
-//    case "Fonts":
-//      cArray=exportFonts(record,exportType);
-//      break;
-//    case "Palettes":
-//      cArray=exportPalette(record,exportType);
-//      break;
-//    case "Images":
-//      cArray=exportImages(record,exportType);
-//      break;
-//    default:
-//      break;
-//  }
-// 
-//  openExportDialogPanel(cArray,record);
-//}
+  const onOk = () => {
+    closeConfirm();
+    onConfirm();
+  };
+  const onCancel = () => {
+    closeConfirm();
+  };
+  const closeConfirm = () => {
+    overlay.style.display = "none";
+    okBtn.removeEventListener("click", onOk);
+    cancelBtn.removeEventListener("click", onCancel);
+  };
+
+  okBtn.addEventListener("click", onOk);
+  cancelBtn.addEventListener("click", onCancel);
+}
+
+function exportRecord(record) {
+  let cArray='';
+  const exportType= dataStore.find(r => r.Type === "SETTING_EXPORT_TYPE").Values;
+  switch(record.Type) {
+    case "Sprites":
+      cArray=exportSprites(record,exportType);
+      break;
+    case "Tiles":
+      cArray=exportTiles(record,exportType);
+          break;
+    case "Maps":
+      cArray=exportMaps(record,exportType);
+      break;
+    case "Fonts":
+      cArray=exportFonts(record,exportType);
+      break;
+    case "Palettes":
+      cArray=exportPalette(record,exportType);
+      break;
+    case "Images":
+      cArray=exportImages(record,exportType);
+      break;
+    default:
+      break;
+  }
+ 
+  openExportDialogPanel(cArray,record);
+}
 
 function openExportDialogPanel(text,record) {
   const overlay = document.getElementById("exportDialogOverlay");
