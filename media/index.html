@@ -2316,6 +2316,7 @@ async function exportRecord(recordId, expLanguageSelect, displayData) {
         const [itemWidth, itemHeight] = record.Size.split("x").map(Number);
         const blocksX=canvas.width/itemWidth;
         const blocksY=canvas.height/itemHeight;
+
         let fontExport=false;
         let fontHeaderFirst=0;
         let fontHeaderLast=0;
@@ -2343,8 +2344,8 @@ async function exportRecord(recordId, expLanguageSelect, displayData) {
         //console.log("PALETTES",palettes);
        
         if(record.Subtype!="Type 2"){
-          const freeImageData=getPngDataArray(exportBase64String,record.TagName,itemWidth,itemHeight,blocksX,blocksY,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);
-          //console.log("EXPORTIMAGE", freeImageData);
+          const freeImageData=getPngDataArray(exportBase64String,record.TagName,itemWidth*blocksX,itemHeight*blocksY,blocksX,blocksY,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);
+          console.log("EXPORTIMAGE", freeImageData);
           if(displayData){
             openExportDialogPanel(freeImageData[2],record);
           }

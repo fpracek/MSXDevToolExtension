@@ -7,7 +7,7 @@ There is also a feature to immediately test the movement of the sprites.
 
 To show extension designer window:
     - press CTRL+P keyboard buttons and after to write MSXDev tool on the textbox
-    - Click on "MSX" icon into Activity Bar
+    - Click on "MSX" icon inside Activity Bar
 
 For info, source code and issues:
 https://github.com/fpracek/MSXDevToolExtension
