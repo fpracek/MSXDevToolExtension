@@ -2,7 +2,7 @@
   "name": "msxdevtool-extension",
   "displayName": "MSXDevTool Extension",
   "description": "MSXDevTool Extension for Visual Studio Code",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "engines": {
     "vscode": "^1.75.0"
   },

@@ -4112,8 +4112,8 @@ function createCombinedImage(record, paletteRecord, show) {
   const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
   const [width, height] = record.Size.split('x').map(Number);
   const numImages = images.length;
-  const numCols = Math.ceil(Math.sqrt(numImages));
-  const numRows = Math.ceil(numImages / numCols);
+  const numCols = 1; //Math.ceil(Math.sqrt(numImages));
+  const numRows = numImages; //Math.ceil(numImages / numCols);
   const totalWidth = width * numCols;
   const totalHeight = height * numRows;
 
