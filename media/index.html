@@ -510,7 +510,7 @@
       <option value="asm-sdasz80">Assembly (SDDC)</option>
       <option value="asm-tniasm">Assembly (tniASM)</option>
       <option value="asm-asmsx">Assembly (asMSX)</option>
-      <option value="asm-sjasm">Assembly (Syasm)</option>
+      <option value="asm-sjasm">Assembly (SjASMPlus)</option>
       <option value="asm-macro80">Assembly (MACRO80)</option>
       <option value="msxc">MSX-C</option>
       <!-- <option value="Pascal">Pascal</option> -->
@@ -2218,6 +2218,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
     }
 });
+
 async function exportRecord(recordId, expLanguageSelect, displayData) {
   const currentType = document.getElementById("typeSelect").value;
       let currentSubtype = "";
@@ -2295,11 +2296,33 @@ async function exportRecord(recordId, expLanguageSelect, displayData) {
         return mapData;
       }
       try {
-        const canvas = await createCombinedImage(record, paletteRecord, false);
-        const image=canvas.toDataURL();
-       
+        const [itemWidth, itemHeight] = record.Size.split("x").map(Number);
+        let blocksX;
+        let blocksY;
+        let image;
+        if(record.Subtype!="Type 2"){
+          if(record.Type==="Sprites" && itemWidth===16 && itemHeight===16){
+            image=await createCombinedImage(record, paletteRecord, false,true);
+            const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
+            const numImages = images.length;
+            blocksX=1;
+            blocksY=images.length*4;
+          }
+          else{
+            const canvas = await createCombinedImage(record, paletteRecord, false,false);
+            blocksX=canvas.width/itemWidth;
+            blocksY=canvas.height/itemHeight;
+            image=canvas.toDataURL();
+          }
+        }
+        else{
+          const canvas = await createCombinedImage(record, paletteRecord, false,false);
+          blocksX=canvas.width/itemWidth;
+          blocksY=canvas.height/itemHeight;
+          image=canvas.toDataURL();
+        }
+    
         const exportBase64String = image.split("base64,")[1];
-       
         
         let language=expLanguageSelect.value.split("-")[0].toLowerCase();
         let asmType="";
@@ -2313,9 +2336,8 @@ async function exportRecord(recordId, expLanguageSelect, displayData) {
         });
         
 
-        const [itemWidth, itemHeight] = record.Size.split("x").map(Number);
-        const blocksX=canvas.width/itemWidth;
-        const blocksY=canvas.height/itemHeight;
+        
+
 
         let fontExport=false;
         let fontHeaderFirst=0;
@@ -2342,14 +2364,26 @@ async function exportRecord(recordId, expLanguageSelect, displayData) {
         //console.log("LANGUAGE",language); 
         //console.log("EXPORTTYPE",exportType);
         //console.log("PALETTES",palettes);
-       
+        let freeImageData = null;
         if(record.Subtype!="Type 2"){
-          const freeImageData=getPngDataArray(exportBase64String,record.TagName,itemWidth*blocksX,itemHeight*blocksY,blocksX,blocksY,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);
-          console.log("EXPORTIMAGE", freeImageData);
-          if(displayData){
-            openExportDialogPanel(freeImageData[2],record);
+          if(record.Type==="Sprites" && itemWidth===16 && itemHeight===16){
+            freeImageData=getPngDataArray(exportBase64String,record.TagName,8,8*blocksY,8,8,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);  
           }
-          return freeImageData[2];
+          else{
+            freeImageData=getPngDataArray(exportBase64String,record.TagName,itemWidth*blocksX,itemHeight*blocksY,blocksX,blocksY,"input",0,0,0,0,4,language,false,0,false,0,palettes,16,0,false,false,exportType,"none","none",asmType,"none",null,0,0,0,0,false,fontExport,fontHeaderFirst,fontHeaderLast,fontHeaderX,fontHeaderY,false,false,true);
+          }
+          let exitData=freeImageData[2];
+          if(expLanguageSelect.value==="asm-sjasm"){
+            exitData=exitData.replace(".db","db");
+            exitData=exitData.replace(/,/g,"");
+            console.log(exitData);
+          }
+          //console.log("EXPORTIMAGE", freeImageData);
+          if(displayData){
+            openExportDialogPanel(exitData,record);
+          }
+          
+          return exitData;
         }
         else{
           const arrayc=exportType2Sprites(record,expLanguageSelect.value)
@@ -4106,47 +4140,6 @@ document.getElementById("exportCopy").addEventListener("click", async () => {
   }
 });
 
-function createCombinedImage(record, paletteRecord, show) {
-
-
-  const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
-  const [width, height] = record.Size.split('x').map(Number);
-  const numImages = images.length;
-  const numCols = 1; //Math.ceil(Math.sqrt(numImages));
-  const numRows = numImages; //Math.ceil(numImages / numCols);
-  const totalWidth = width * numCols;
-  const totalHeight = height * numRows;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = totalWidth;
-  canvas.height = totalHeight;
-  const ctx = canvas.getContext('2d');
-
-  return new Promise((resolve, reject) => {
-    let loadedImages = 0;
-
-    images.forEach((imageData, index) => {
-      const img = new Image();
-      img.onload = () => {
-        const col = index % numCols;
-        const row = Math.floor(index / numCols);
-        ctx.drawImage(img, width * col, height * row, width, height);
-        loadedImages++;
-
-        if (loadedImages === images.length) {
-          if (show) {
-            document.getElementById("combinedImage").src = canvas.toDataURL();
-            resolve();
-          } else {
-            resolve(canvas);
-          }
-        }
-      };
-      img.onerror = reject;
-      img.src = imageData;
-    });
-  });
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   // ...existing code...cas

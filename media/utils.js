@@ -19,8 +19,124 @@
  */
 
 
+function createCombinedImage(record, paletteRecord, show, is8x8) {
 
 
+  const images = record.Values.map(value => getImageFromObject(value.ID, record, paletteRecord));
+  const [width, height] = record.Size.split('x').map(Number);
+  const numImages = images.length;
+  const numCols = 1; //Math.ceil(Math.sqrt(numImages));
+  const numRows = numImages; //Math.ceil(numImages / numCols);
+  const totalWidth = width * numCols;
+  const totalHeight = height * numRows;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = totalWidth;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext('2d');
+
+  return new Promise((resolve, reject) => {
+    let loadedImages = 0;
+
+    images.forEach((imageData, index) => {
+      const img = new Image();
+      img.onload = () => {
+        const col = index % numCols;
+        const row = Math.floor(index / numCols);
+        ctx.drawImage(img, width * col, height * row, width, height);
+        loadedImages++;
+
+        if (loadedImages === images.length) {
+          if (show) {
+            document.getElementById("combinedImage").src = canvas.toDataURL();
+            resolve();
+          } else {
+            console.log(1);
+            (async () => {
+              if(is8x8) {
+                const img8x8 = await transformPngBase64from16x16to8x8(canvas.toDataURL());
+                resolve(img8x8);
+              }
+              else{
+                resolve(canvas);
+              }
+                
+                
+            })();
+          }
+        }
+      };
+      img.onerror = reject;
+      img.src = imageData;
+    });
+  });
+}
+
+async function transformPngBase64from16x16to8x8(originalBase64) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const originalWidth = img.width;
+      const originalHeight = img.height; 
+      
+      if (originalWidth !== 16 || originalHeight % 16 !== 0) {
+        return reject(new Error("L'immagine deve essere 16 x (multiplo di 16)"));
+      }
+      
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = originalWidth;
+      sourceCanvas.height = originalHeight;
+      const sourceCtx = sourceCanvas.getContext('2d');
+      sourceCtx.drawImage(img, 0, 0);
+      const numVerticalBlocks = originalHeight / 16;
+      const newWidth = 8;
+      const newHeight = 8 * 4 * numVerticalBlocks; 
+    
+      const outputCanvas = document.createElement('canvas');
+      outputCanvas.width = newWidth;
+      outputCanvas.height = newHeight;
+      const outputCtx = outputCanvas.getContext('2d');
+  
+    
+      for (let blockIndex = 0; blockIndex < numVerticalBlocks; blockIndex++) {
+        // Calcolo Y di inizio del blocco 16×16 nel canvas sorgente
+        const sourceBlockY = blockIndex * 16;
+
+        
+        const subBlocks = [
+          { sx: 0,  sy: sourceBlockY + 0  }, // top-left
+          { sx: 8,  sy: sourceBlockY + 0  }, // top-right
+          { sx: 0,  sy: sourceBlockY + 8  }, // bottom-left
+          { sx: 8,  sy: sourceBlockY + 8  }, // bottom-right
+        ];
+        
+        subBlocks.forEach((sub, subIndex) => {
+
+          const targetX = 0;
+          const targetY = (blockIndex * 4 + subIndex) * 8;
+          
+
+          outputCtx.drawImage(
+            sourceCanvas,
+            sub.sx, sub.sy,        
+            8, 8,                 
+            targetX, targetY,     
+            8, 8                   
+          );
+        });
+      }
+      // Convertiamo tutto in base64 (PNG)
+      const resultBase64 = outputCanvas.toDataURL('image/png');
+
+      resolve(resultBase64);
+    };
+    
+    img.onerror = (err) => reject(err);
+    
+    // Assegna la stringa base64 come src all'immagine
+    img.src = originalBase64;
+  });
+}
 
 function CreateCode(codeGeneratorItems, codeGeneratorScreenMode, codGeneratorMachine) {
   console.log(codeGeneratorItems);
